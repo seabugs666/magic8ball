@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'url';
 export default defineConfig({
   base: '/magic8ball/',
   publicDir: 'public',
+  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr'],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -32,5 +33,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['three', 'gsap'],
   },
-  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr'],
 });

@@ -10,6 +10,7 @@
     "postbuild": "node copy-assets.js"
   },
   "devDependencies": {
+    "find": "^0.3.0",
     "fs-extra": "^11.3.2",
     "terser": "^5.44.0",
     "vite": "^7.1.2"
