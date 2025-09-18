@@ -39,7 +39,7 @@ scene.add(dirLight1);
 const dirLight2 = new THREE.DirectionalLight(0xffffff, 1.0);
 dirLight2.position.set(-5, 5, 5);
 scene.add(dirLight2);
-const dirLight3 = new THREE.DirectionalLight(0xffffff, 0.8);
+const dirLight3 = new THREE.DirectionalLight(0xffffff, 8);
 dirLight3.position.set(-5, 5, -5);
 scene.add(dirLight3);
 
