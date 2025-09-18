@@ -142,9 +142,8 @@ function shakeObject(object, intensity = 0.01, duration = 0.2) {
     }, duration * 1000);
 }
 
-// === Unified Spin Function ===
+// === Spin Function ===
 let isAnimating = false;
-
 function triggerSpin() {
     if (!die || isAnimating) return;
     isAnimating = true;
@@ -180,32 +179,38 @@ function triggerSpin() {
 // === Desktop double-click ===
 renderer.domElement.addEventListener('dblclick', triggerSpin);
 
-// === Mobile shake detection ===
-let lastAccel = { x: null, y: null, z: null };
-let shakeThreshold = 15; // adjust sensitivity
-let lastShakeTime = 0;
-let shakeCooldown = 1000; // 1 second cooldown
+// === Mobile hard swipe ===
+let touchStartPos = null;
+let swipeThreshold = 150; // minimum distance in pixels
+let swipeSpeedThreshold = 0.5; // px/ms
+let lastSwipeTime = 0;
+let swipeCooldown = 500; // ms
 
-window.addEventListener('devicemotion', (event) => {
-    const accel = event.accelerationIncludingGravity;
-    if (!accel.x || !accel.y || !accel.z) return;
+renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchStartPos = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+}, { passive: true });
 
-    if (lastAccel.x !== null) {
-        const deltaX = Math.abs(accel.x - lastAccel.x);
-        const deltaY = Math.abs(accel.y - lastAccel.y);
-        const deltaZ = Math.abs(accel.z - lastAccel.z);
+renderer.domElement.addEventListener('touchend', (e) => {
+    if (!touchStartPos) return;
 
-        const totalDelta = deltaX + deltaY + deltaZ;
-        const now = Date.now();
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartPos.x;
+    const dy = touch.clientY - touchStartPos.y;
+    const dt = Date.now() - touchStartPos.time;
 
-        if (totalDelta > shakeThreshold && now - lastShakeTime > shakeCooldown) {
-            lastShakeTime = now;
-            triggerSpin();
-        }
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const speed = distance / dt; // px/ms
+    const now = Date.now();
+
+    if (distance > swipeThreshold && speed > swipeSpeedThreshold && now - lastSwipeTime > swipeCooldown) {
+        lastSwipeTime = now;
+        triggerSpin();
     }
 
-    lastAccel = { x: accel.x, y: accel.y, z: accel.z };
-});
+    touchStartPos = null;
+}, { passive: true });
 
 // === Resize ===
 window.addEventListener('resize', () => {
@@ -227,4 +232,4 @@ function animate() {
 }
 animate();
 
-console.log('🎱 Magic 8-Ball ready: double-click (desktop) or shake (mobile)');
+console.log('🎱 Magic 8-Ball ready: double-click (desktop) or swipe hard (mobile)');
