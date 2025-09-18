@@ -50,7 +50,7 @@ let mixer = null;
 let actions = [];
 
 const loader = new GLTFLoader();
-const modelPath = 'assets/magic8ball.glb'; // relative path works on GitHub Pages subfolder
+const modelPath = 'assets/magic8ball.glb';
 console.log('Loading GLB file from:', modelPath);
 
 loader.load(
@@ -142,9 +142,10 @@ function shakeObject(object, intensity = 0.01, duration = 0.2) {
     }, duration * 1000);
 }
 
-// === Double-click ===
+// === Unified Spin Function ===
 let isAnimating = false;
-renderer.domElement.addEventListener('dblclick', () => {
+
+function triggerSpin() {
     if (!die || isAnimating) return;
     isAnimating = true;
 
@@ -174,6 +175,36 @@ renderer.domElement.addEventListener('dblclick', () => {
             isAnimating = false;
         },
     });
+}
+
+// === Desktop double-click ===
+renderer.domElement.addEventListener('dblclick', triggerSpin);
+
+// === Mobile shake detection ===
+let lastAccel = { x: null, y: null, z: null };
+let shakeThreshold = 15; // adjust sensitivity
+let lastShakeTime = 0;
+let shakeCooldown = 1000; // 1 second cooldown
+
+window.addEventListener('devicemotion', (event) => {
+    const accel = event.accelerationIncludingGravity;
+    if (!accel.x || !accel.y || !accel.z) return;
+
+    if (lastAccel.x !== null) {
+        const deltaX = Math.abs(accel.x - lastAccel.x);
+        const deltaY = Math.abs(accel.y - lastAccel.y);
+        const deltaZ = Math.abs(accel.z - lastAccel.z);
+
+        const totalDelta = deltaX + deltaY + deltaZ;
+        const now = Date.now();
+
+        if (totalDelta > shakeThreshold && now - lastShakeTime > shakeCooldown) {
+            lastShakeTime = now;
+            triggerSpin();
+        }
+    }
+
+    lastAccel = { x: accel.x, y: accel.y, z: accel.z };
 });
 
 // === Resize ===
@@ -196,4 +227,4 @@ function animate() {
 }
 animate();
 
-console.log('🎱 Magic 8-Ball ready: double-click for answer');
+console.log('🎱 Magic 8-Ball ready: double-click (desktop) or shake (mobile)');
