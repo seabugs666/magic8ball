@@ -51,7 +51,7 @@ let actions = [];
 
 const loader = new GLTFLoader();
 loader.load(
-    '../magic8ball.glb',
+    '../public/magic8ball.glb',
     (gltf) => {
         ballParent = gltf.scene;
         scene.add(ballParent);
