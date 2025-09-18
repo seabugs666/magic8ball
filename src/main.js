@@ -50,9 +50,11 @@ let mixer = null;
 let actions = [];
 
 const loader = new GLTFLoader();
+console.log('Loading GLB file from:', '/assets/magic8ball.glb');
 loader.load(
     '/assets/magic8ball.glb',
     (gltf) => {
+        console.log('GLB loaded successfully:', gltf);
         ballParent = gltf.scene;
         scene.add(ballParent);
 

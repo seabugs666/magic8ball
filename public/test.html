@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test GLB Access</title>
+    <script>
+        window.onload = async () => {
+            const testAsset = async () => {
+                try {
+                    const response = await fetch('/assets/magic8ball.glb');
+                    if (response.ok) {
+                        console.log('✅ GLB file is accessible');
+                        console.log('Response status:', response.status);
+                        console.log('Content type:', response.headers.get('content-type'));
+                    } else {
+                        console.error('❌ Failed to load GLB:', response.status, response.statusText);
+                    }
+                } catch (error) {
+                    console.error('❌ Error testing GLB access:', error);
+                }
+            };
+            testAsset();
+        };
+    </script>
+</head>
+<body>
+    <h1>Test GLB Access</h1>
+    <p>Check the browser console for test results.</p>
+</body>
+</html>
