@@ -50,9 +50,11 @@ let mixer = null;
 let actions = [];
 
 const loader = new GLTFLoader();
-console.log('Loading GLB file from:', 'assets/magic8ball.glb');
+const modelPath = 'assets/magic8ball.glb'; // relative path works on GitHub Pages subfolder
+console.log('Loading GLB file from:', modelPath);
+
 loader.load(
-    '/assets/magic8ball.glb',
+    modelPath,
     (gltf) => {
         console.log('GLB loaded successfully:', gltf);
         ballParent = gltf.scene;
@@ -67,20 +69,20 @@ loader.load(
         }
         if (!die) die = ballParent; // fallback
 
-        // Enhance glass material (make liquid clearer)
+        // Enhance glass material
         const glass = ballParent.getObjectByName('Glass');
         if (glass) {
             glass.material = new THREE.MeshPhysicalMaterial({
                 color: 0x88aadd,
                 transparent: true,
-                opacity: 0.1,         // more see-through
-                transmission: 1.0,    // full transparency effect
-                roughness: 0.05,      // smoother liquid look
+                opacity: 0.1,
+                transmission: 1.0,
+                roughness: 0.05,
                 metalness: 0.0,
                 clearcoat: 0.3,
                 clearcoatRoughness: 0.2,
                 ior: 1.33,
-                thickness: 0.1,       // thinner for clarity
+                thickness: 0.1,
                 specularIntensity: 0.5,
                 envMapIntensity: 0.8,
                 side: THREE.DoubleSide,
@@ -104,10 +106,11 @@ loader.load(
         console.log('Magic 8-Ball loaded.');
     },
     (progress) => {
-        console.log(
-            'Loading progress:',
-            ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
-        );
+        if (progress.total)
+            console.log(
+                'Loading progress:',
+                ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
+            );
     },
     (err) => console.error('Error loading model:', err)
 );
@@ -145,32 +148,27 @@ renderer.domElement.addEventListener('dblclick', () => {
     if (!die || isAnimating) return;
     isAnimating = true;
 
-    // Shake the ball
-    if (ballParent) {
-        shakeObject(ballParent, 0.03, 0.3);
-    }
+    if (ballParent) shakeObject(ballParent, 0.03, 0.3);
 
-    // Spin die randomly
     const startQuat = die.quaternion.clone();
     const rollQuat = randomQuaternion();
     gsap.to({ t: 0 }, {
         t: 1,
         duration: 0.6,
         ease: 'power2.inOut',
-        onUpdate: function () {
+        onUpdate() {
             const currentQuat = new THREE.Quaternion();
             currentQuat.slerpQuaternions(startQuat, rollQuat, this.t);
             die.quaternion.copy(currentQuat);
         },
-        onComplete: () => {
-            // Play a random Blender animation (once, slower, holds final frame)
+        onComplete() {
             if (actions.length) {
                 actions.forEach((a) => a.stop());
                 const action = actions[Math.floor(Math.random() * actions.length)];
                 action.reset();
                 action.setLoop(THREE.LoopOnce, 0);
                 action.clampWhenFinished = true;
-                action.timeScale = 0.5; // slower playback
+                action.timeScale = 0.5;
                 action.play();
             }
             isAnimating = false;
