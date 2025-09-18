@@ -181,7 +181,7 @@ renderer.domElement.addEventListener('dblclick', triggerSpin);
 
 // === Mobile hard swipe ===
 let touchStartPos = null;
-let swipeThreshold = 200; // minimum distance in pixels
+let swipeThreshold = 100; // minimum distance in pixels
 let swipeSpeedThreshold = .5; // px/ms
 let lastSwipeTime = 0;
 let swipeCooldown = 1000; // ms
