@@ -31,11 +31,22 @@ async function copyAssets() {
       console.log(`✅ GLB file found at: ${glbPath}`);
     } else {
       console.error(`❌ GLB file not found at: ${glbPath}`);
-      // Try to find where the file might be
-      console.log('Searching for GLB file in project...');
-      const find = await import('find');
-      const files = await find.file(/magic8ball\.glb$/, process.cwd());
-      console.log('Found GLB files:', files);
+      // Look for the GLB file in common locations
+      const possibleLocations = [
+        path.join(process.cwd(), 'public', 'assets', 'magic8ball.glb'),
+        path.join(process.cwd(), 'assets', 'magic8ball.glb'),
+        path.join(process.cwd(), 'magic8ball.glb')
+      ];
+      
+      for (const location of possibleLocations) {
+        if (await fs.pathExists(location)) {
+          console.log(`Found GLB file at: ${location}`);
+          await fs.ensureDir(path.dirname(glbPath));
+          await fs.copyFile(location, glbPath);
+          console.log(`✅ Copied GLB file to: ${glbPath}`);
+          break;
+        }
+      }
     }
     
     console.log('✅ Assets copied successfully!');

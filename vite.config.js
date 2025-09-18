@@ -22,6 +22,7 @@ export default defineConfig({
     sourcemap: true,
     minify: 'terser',
     assetsInlineLimit: 0,
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         assetFileNames: 'assets/[name][extname]',
