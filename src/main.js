@@ -1,3 +1,8 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { gsap } from 'gsap';
+
 // === Scene & Camera ===
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111111);
@@ -22,7 +27,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 
 // === Controls ===
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
@@ -44,9 +49,9 @@ let ballParent = null;
 let mixer = null;
 let actions = [];
 
-const loader = new THREE.GLTFLoader();
+const loader = new GLTFLoader();
 loader.load(
-    './assets/magic8ball.glb',
+    '../assets/magic8ball.glb',
     (gltf) => {
         ballParent = gltf.scene;
         scene.add(ballParent);
@@ -60,20 +65,20 @@ loader.load(
         }
         if (!die) die = ballParent; // fallback
 
-        // Enhance glass material
+        // Enhance glass material (make liquid clearer)
         const glass = ballParent.getObjectByName('Glass');
         if (glass) {
             glass.material = new THREE.MeshPhysicalMaterial({
                 color: 0x88aadd,
                 transparent: true,
-                opacity: 0.1,
-                transmission: 1.0,
-                roughness: 0.05,
+                opacity: 0.1,         // more see-through
+                transmission: 1.0,    // full transparency effect
+                roughness: 0.05,      // smoother liquid look
                 metalness: 0.0,
                 clearcoat: 0.3,
                 clearcoatRoughness: 0.2,
                 ior: 1.33,
-                thickness: 0.1,
+                thickness: 0.1,       // thinner for clarity
                 specularIntensity: 0.5,
                 envMapIntensity: 0.8,
                 side: THREE.DoubleSide,
@@ -96,20 +101,25 @@ loader.load(
         if (loading) loading.style.display = 'none';
         console.log('Magic 8-Ball loaded.');
     },
-    (progress) => console.log(
-        'Loading progress:', ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
-    ),
+    (progress) => {
+        console.log(
+            'Loading progress:',
+            ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
+        );
+    },
     (err) => console.error('Error loading model:', err)
 );
 
-// === Helpers ===
+// === Animation Helpers ===
 function randomQuaternion() {
     const q = new THREE.Quaternion();
-    q.setFromEuler(new THREE.Euler(
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2
-    ));
+    q.setFromEuler(
+        new THREE.Euler(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+        )
+    );
     return q;
 }
 
@@ -133,8 +143,12 @@ renderer.domElement.addEventListener('dblclick', () => {
     if (!die || isAnimating) return;
     isAnimating = true;
 
-    if (ballParent) shakeObject(ballParent, 0.03, 0.3);
+    // Shake the ball
+    if (ballParent) {
+        shakeObject(ballParent, 0.03, 0.3);
+    }
 
+    // Spin die randomly
     const startQuat = die.quaternion.clone();
     const rollQuat = randomQuaternion();
     gsap.to({ t: 0 }, {
@@ -147,17 +161,18 @@ renderer.domElement.addEventListener('dblclick', () => {
             die.quaternion.copy(currentQuat);
         },
         onComplete: () => {
+            // Play a random Blender animation (once, slower, holds final frame)
             if (actions.length) {
-                actions.forEach(a => a.stop());
+                actions.forEach((a) => a.stop());
                 const action = actions[Math.floor(Math.random() * actions.length)];
                 action.reset();
                 action.setLoop(THREE.LoopOnce, 0);
                 action.clampWhenFinished = true;
-                action.timeScale = 0.5;
+                action.timeScale = 0.5; // slower playback
                 action.play();
             }
             isAnimating = false;
-        }
+        },
     });
 });
 
@@ -168,12 +183,14 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === Animate Loop ===
+// === Animate loop ===
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
+
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
+
     controls.update();
     renderer.render(scene, camera);
 }
