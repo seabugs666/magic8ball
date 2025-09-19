@@ -6,7 +6,7 @@ import { gsap } from 'gsap';
 // === Scene & Camera ===
 const scene = new THREE.Scene();
 // === Purple Fog ===
-scene.fog = new THREE.FogExp2(0x440066, 0.05);
+scene.fog = new THREE.FogExp2(0x440066, 0.005);
 // 0x440066 = deep purple
 // 0.05 = fog density (adjust for thicker or thinner fog)
 
@@ -96,6 +96,11 @@ light.position.set( 0, 10, 0 );
 light.target.position.set( - 5, 0, 0 );
 scene.add( light );
 scene.add( light.target );
+
+const purpleLight = new THREE.PointLight(0x9900ff, 0.3, 10, 2);
+purpleLight.position.set(0, 1.5, 0);
+scene.add(purpleLight);
+
 
 // === Load Magic 8-Ball ===
 let die = null;
