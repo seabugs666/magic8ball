@@ -180,26 +180,41 @@ function triggerSpin() {
 controls.enablePan = false;  // Disable panning
 controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
 controls.enableRotate = true; // Enable rotation
-controls.minPolarAngle = Math.PI / 2; // Restrict vertical rotation
-controls.maxPolarAngle = Math.PI / 2; // Restrict vertical rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
+
+// Set up rotation constraints
+controls.minPolarAngle = Math.PI / 2; // 90 degrees - look horizontally
+controls.maxPolarAngle = Math.PI / 2; // 90 degrees - look horizontally
+controls.minAzimuthAngle = -Infinity; // No limit on left rotation
+controls.maxAzimuthAngle = Infinity;  // No limit on right rotation
+
+// Set up touch controls
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate
     TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom and pan
 };
 
-// Lock rotation to X-axis only
+// Lock to X-axis rotation only
 const originalUpdate = controls.update;
 controls.update = function() {
     originalUpdate.call(this);
     
-    // Force Y rotation to 0 and Z rotation to 0
-    const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-    euler.y = 0; // Lock Y rotation
-    euler.z = 0; // Lock Z rotation
-    camera.quaternion.setFromEuler(euler);
+    // Get current rotation
+    const euler = new THREE.Euler().setFromQuaternion(ballParent.quaternion, 'XYZ');
+    
+    // Keep only X rotation, reset Y and Z
+    euler.y = 0;
+    euler.z = 0;
+    
+    // Apply the rotation to the ball
+    ballParent.rotation.x = euler.x;
+    ballParent.rotation.y = 0;
+    ballParent.rotation.z = 0;
+    
+    // Reset camera position to keep it looking at the ball
+    camera.lookAt(ballParent.position);
 };
 
 // === Desktop double-click ===
