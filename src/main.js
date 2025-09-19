@@ -141,6 +141,29 @@ loader.load(
             });
         }
 
+        // Enhance liquid material
+        const liquid = ballParent.getObjectByName('Liquid');
+        if (liquid) {
+            liquid.material = new THREE.MeshPhysicalMaterial({
+                color: 0x001f5b,       // Dark, deep blue
+                transparent: true,
+                opacity: 0.7,          // Slightly more visible than glass
+                transmission: 0.9,     // Allow light to pass through
+                roughness: 0.1,        // Smooth liquid surface
+                metalness: 0.0,
+                clearcoat: 0.4,
+                clearcoatRoughness: 0.1,
+                ior: 1.4,              // Index of refraction for realistic bending
+                thickness: 0.8,        // Give depth to the liquid
+                specularIntensity: 1.0,
+                envMapIntensity: 1.0,  // Reflect environment nicely
+                reflectivity: 0.5,
+                side: THREE.DoubleSide, // Avoid black backfaces
+                premultipliedAlpha: true,
+            });
+        }
+
+
         // === Animations ===
         if (gltf.animations && gltf.animations.length) {
             mixer = new THREE.AnimationMixer(ballParent);
