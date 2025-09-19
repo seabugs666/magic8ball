@@ -39,6 +39,34 @@ controls.zoomSpeed = 1.5;
 controls.minDistance = 2;
 controls.maxDistance = 10;
 
+// Lock rotation to only up and down
+controls.minPolarAngle = 0; // Allow looking all the way up
+controls.maxPolarAngle = Math.PI; // Allow looking all the way down
+controls.minAzimuthAngle = 0; // Prevent horizontal rotation
+controls.maxAzimuthAngle = 0; // Prevent horizontal rotation
+
+// Force camera to only rotate up and down
+const targetPosition = new THREE.Vector3();
+const updateCamera = () => {
+    // Keep the camera looking at the center
+    camera.lookAt(0, 0, 0);
+    
+    // Force the camera to maintain its distance from the center
+    const distance = camera.position.length();
+    camera.position.normalize().multiplyScalar(distance);
+    
+    // Ensure the camera stays on the same vertical plane
+    camera.position.x = 0;
+    camera.position.z = -Math.abs(camera.position.z);
+};
+
+// Override the update method to enforce our constraints
+const originalUpdate = controls.update;
+controls.update = function() {
+    originalUpdate.call(this);
+    updateCamera();
+};
+
 // Configure touch controls for mobile
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
