@@ -197,62 +197,35 @@ controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
 controls.zoomSpeed = 1.0; // Increased zoom speed for better responsiveness
 
-// iOS Safari specific settings
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-if (isIOS) {
-    // For iOS, we'll handle the pinch zoom manually
-    controls.enableZoom = false;
-    
-    // Add iOS specific touch event handlers
-    let initialDistance = 0;
-    
-    renderer.domElement.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-            // Calculate initial distance between two fingers
-            const dx = e.touches[0].pageX - e.touches[1].pageX;
-            const dy = e.touches[0].pageY - e.touches[1].pageY;
-            initialDistance = Math.sqrt(dx * dx + dy * dy);
-            touchMoved = true; // Prevent tap detection
-        }
-    }, { passive: true });
-    
-    renderer.domElement.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            // Calculate current distance between fingers
-            const dx = e.touches[0].pageX - e.touches[1].pageX;
-            const dy = e.touches[0].pageY - e.touches[1].pageY;
-            const currentDistance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Calculate zoom factor
-            if (initialDistance > 0) {
-                const zoomFactor = currentDistance / initialDistance;
-                // Adjust camera distance based on pinch
-                const newDistance = camera.position.distanceTo(controls.target) * (1 + (1 - zoomFactor) * 0.1);
-                // Apply constraints
-                const clampedDistance = Math.max(2, Math.min(10, newDistance));
-                
-                // Update camera position
-                const direction = new THREE.Vector3()
-                    .subVectors(camera.position, controls.target)
-                    .normalize()
-                    .multiplyScalar(clampedDistance);
-                camera.position.copy(controls.target).add(direction);
-                
-                // Update initial distance for next calculation
-                initialDistance = currentDistance;
-            }
-            touchMoved = true; // Prevent tap detection
-        }
-    }, { passive: false });
-} else {
-    // Standard touch controls for non-iOS devices
-    controls.touches = {
-        ONE: THREE.TOUCH.ROTATE,
-        TWO: THREE.TOUCH.DOLLY_PAN
-    };
-    controls.screenSpacePanning = true;
-}
+// Configure touch controls
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN
+};
+controls.screenSpacePanning = true;
+
+// Enable zoom and set up constraints
+controls.enableZoom = true;
+controls.zoomSpeed = 1.5; // Increase zoom speed for better responsiveness
+controls.minDistance = 2;
+controls.maxDistance = 10;
+
+// Add touch event listeners for better iOS handling
+renderer.domElement.style.touchAction = 'none';
+renderer.domElement.addEventListener('gesturestart', (e) => {
+    e.preventDefault();
+    touchMoved = true;
+});
+
+renderer.domElement.addEventListener('gesturechange', (e) => {
+    e.preventDefault();
+    touchMoved = true;
+});
+
+renderer.domElement.addEventListener('gestureend', (e) => {
+    e.preventDefault();
+    touchMoved = true;
+});
 
 // Standard mouse controls
 controls.mouseButtons = {
@@ -353,27 +326,23 @@ renderer.domElement.addEventListener('touchstart', (e) => {
         touchMoved = false;
     } else if (e.touches.length === 2) {
         // Two touches - handle pinch zoom
-        // Let OrbitControls handle the zoom, just mark as moved
         touchMoved = true;
     }
-    e.preventDefault();
-}, { passive: false });
+}, { passive: true });
 
-// Touch move handler (for non-iOS or single touch on iOS)
-if (!isIOS) {
-    renderer.domElement.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
-            // Single touch - check for swipe
-            const touch = e.touches[0];
-            const dx = Math.abs(touch.clientX - touchStartX);
-            const dy = Math.abs(touch.clientY - touchStartY);
+// Touch move handler
+renderer.domElement.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1) {
+        // Single touch - check for swipe
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchStartX);
+        const dy = Math.abs(touch.clientY - touchStartY);
 
-            if (dx > moveThreshold || dy > moveThreshold) {
-                touchMoved = true;
-            }
+        if (dx > moveThreshold || dy > moveThreshold) {
+            touchMoved = true;
         }
-    }, { passive: true });
-}
+    }
+}, { passive: true });
 
 // Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
