@@ -157,26 +157,35 @@ function triggerSpin() {
         }
     });
 
-    // First phase: Fast ramp-up
+    // First phase: Super fast initial spin with strong ease-in
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 2,
-        duration: 0.3,
-        ease: 'power1.in',
+        x: die.rotation.x + Math.PI * 8, // More initial rotation
+        duration: 0.2,
+        ease: 'power4.in',
         onUpdate: () => {
-            // Keep the ball rotating around its center
             die.quaternion.setFromEuler(die.rotation);
         }
     });
-
-    // Second phase: Slow down and settle
+    
+    // Second phase: Fast spin with slight deceleration
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 4, // Additional rotation
-        duration: 0.8,
-        ease: 'back.out(1.2)', // Slight bounce at the end
+        x: die.rotation.x + Math.PI * 12, // Significant additional rotation
+        duration: 0.4,
+        ease: 'sine.out',
         onUpdate: () => {
             die.quaternion.setFromEuler(die.rotation);
         }
-    }, '-=0.1'); // Overlap slightly with previous tween
+    }, '-=0.05');
+    
+    // Final phase: Slow down and settle with bounce
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 6, // Final rotation
+        duration: 0.6,
+        ease: 'elastic.out(1, 0.5)', // Bouncy finish
+        onUpdate: () => {
+            die.quaternion.setFromEuler(die.rotation);
+        }
+    }, '-=0.1');
 }
 
 // Configure orbit controls for up-down rotation and zoom
@@ -186,18 +195,71 @@ controls.enableRotate = true; // Enable rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
-controls.zoomSpeed = 0.5;
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN
-};
-controls.screenSpacePanning = true; // Changed to true for better mobile zoom
+controls.zoomSpeed = 1.0; // Increased zoom speed for better responsiveness
+
+// iOS Safari specific settings
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+if (isIOS) {
+    // For iOS, we'll handle the pinch zoom manually
+    controls.enableZoom = false;
+    
+    // Add iOS specific touch event handlers
+    let initialDistance = 0;
+    
+    renderer.domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            // Calculate initial distance between two fingers
+            const dx = e.touches[0].pageX - e.touches[1].pageX;
+            const dy = e.touches[0].pageY - e.touches[1].pageY;
+            initialDistance = Math.sqrt(dx * dx + dy * dy);
+            touchMoved = true; // Prevent tap detection
+        }
+    }, { passive: true });
+    
+    renderer.domElement.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            // Calculate current distance between fingers
+            const dx = e.touches[0].pageX - e.touches[1].pageX;
+            const dy = e.touches[0].pageY - e.touches[1].pageY;
+            const currentDistance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate zoom factor
+            if (initialDistance > 0) {
+                const zoomFactor = currentDistance / initialDistance;
+                // Adjust camera distance based on pinch
+                const newDistance = camera.position.distanceTo(controls.target) * (1 + (1 - zoomFactor) * 0.1);
+                // Apply constraints
+                const clampedDistance = Math.max(2, Math.min(10, newDistance));
+                
+                // Update camera position
+                const direction = new THREE.Vector3()
+                    .subVectors(camera.position, controls.target)
+                    .normalize()
+                    .multiplyScalar(clampedDistance);
+                camera.position.copy(controls.target).add(direction);
+                
+                // Update initial distance for next calculation
+                initialDistance = currentDistance;
+            }
+            touchMoved = true; // Prevent tap detection
+        }
+    }, { passive: false });
+} else {
+    // Standard touch controls for non-iOS devices
+    controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN
+    };
+    controls.screenSpacePanning = true;
+}
+
+// Standard mouse controls
 controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN
 };
-controls.touchAction = 'pan-y'; // Important for mobile zoom
 
 // Set up zoom constraints
 controls.minDistance = 2;  // Minimum zoom distance
@@ -297,21 +359,21 @@ renderer.domElement.addEventListener('touchstart', (e) => {
     e.preventDefault();
 }, { passive: false });
 
-// Touch move handler
-renderer.domElement.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1) {
-        // Single touch - check for swipe
-        const touch = e.touches[0];
-        const dx = Math.abs(touch.clientX - touchStartX);
-        const dy = Math.abs(touch.clientY - touchStartY);
+// Touch move handler (for non-iOS or single touch on iOS)
+if (!isIOS) {
+    renderer.domElement.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+            // Single touch - check for swipe
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
 
-        if (dx > moveThreshold || dy > moveThreshold) {
-            touchMoved = true;
+            if (dx > moveThreshold || dy > moveThreshold) {
+                touchMoved = true;
+            }
         }
-    }
-    // Let OrbitControls handle the touch events for zooming
-    // No need to preventDefault as it can interfere with the controls
-}, { passive: true });
+    }, { passive: true });
+}
 
 // Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
