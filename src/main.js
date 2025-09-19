@@ -80,27 +80,31 @@ if ('ontouchstart' in window) {
     renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
 }
 
-// Ambient light for general illumination
-scene.add(new THREE.AmbientLight(0xffffff, 1.5)); // Lowered so directional lights pop more
+// === Ambient Light ===
+// Very soft ambient to keep the scene from being completely dark
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// Key directional lights for glints
-const dirLight1 = new THREE.DirectionalLight(0xffffff, 3.0); // Brighter for strong highlights
-dirLight1.position.set(5, 10, 7);
-dirLight1.castShadow = true; // Shadows add depth for realism
-scene.add(dirLight1);
+// === Key Directional Lights ===
+// Main highlight from above-right
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+keyLight.position.set(6, 10, 6);
+keyLight.castShadow = true; // subtle shadows for depth
+scene.add(keyLight);
 
-const dirLight2 = new THREE.DirectionalLight(0xaaffff, 1.2); // Slight blue tint for sparkle
-dirLight2.position.set(-5, 5, 5);
-scene.add(dirLight2);
+// Fill light with subtle blue tint to enhance liquid color
+const fillLight = new THREE.DirectionalLight(0x3399ff, 1.2);
+fillLight.position.set(-4, 5, 4);
+scene.add(fillLight);
 
-const dirLight3 = new THREE.DirectionalLight(0xffffff, 4.0); // Very bright for glitter effect
-dirLight3.position.set(-5, 5, -5);
-scene.add(dirLight3);
+// Back rim light for glinty edge highlights
+const rimLight = new THREE.DirectionalLight(0xffffff, 3.0);
+rimLight.position.set(-6, 7, -5);
+scene.add(rimLight);
 
-// Optional: subtle helper to see light directions during setup
-// const helper = new THREE.DirectionalLightHelper(dirLight1, 1);
-// scene.add(helper);
-
+// Optional subtle ambient colored glint
+const sparkleLight = new THREE.PointLight(0x88ccff, 0.8, 15);
+sparkleLight.position.set(3, 5, 2);
+scene.add(sparkleLight);
 
 // === Load Magic 8-Ball ===
 let die = null;
