@@ -80,17 +80,27 @@ if ('ontouchstart' in window) {
     renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
 }
 
-// === Lights ===
-scene.add(new THREE.AmbientLight(0xffffff, 5.0));
-const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.0);
+// Ambient light for general illumination
+scene.add(new THREE.AmbientLight(0xffffff, 1.5)); // Lowered so directional lights pop more
+
+// Key directional lights for glints
+const dirLight1 = new THREE.DirectionalLight(0xffffff, 3.0); // Brighter for strong highlights
 dirLight1.position.set(5, 10, 7);
+dirLight1.castShadow = true; // Shadows add depth for realism
 scene.add(dirLight1);
-const dirLight2 = new THREE.DirectionalLight(0xffffff, 1.0);
+
+const dirLight2 = new THREE.DirectionalLight(0xaaffff, 1.2); // Slight blue tint for sparkle
 dirLight2.position.set(-5, 5, 5);
 scene.add(dirLight2);
-const dirLight3 = new THREE.DirectionalLight(0xffffff, 8);
+
+const dirLight3 = new THREE.DirectionalLight(0xffffff, 4.0); // Very bright for glitter effect
 dirLight3.position.set(-5, 5, -5);
 scene.add(dirLight3);
+
+// Optional: subtle helper to see light directions during setup
+// const helper = new THREE.DirectionalLightHelper(dirLight1, 1);
+// scene.add(helper);
+
 
 // === Load Magic 8-Ball ===
 let die = null;
