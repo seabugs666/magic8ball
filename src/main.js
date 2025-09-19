@@ -209,8 +209,8 @@ controls.update = function() {
     euler.z = 0;
     
     // Apply the rotation to the ball
-    ballParent.rotation.x = euler.x;
-    ballParent.rotation.y = 0;
+    ballParent.rotation.x = 0;
+    ballParent.rotation.y = euler.y;
     ballParent.rotation.z = 0;
     
     // Reset camera position to keep it looking at the ball
