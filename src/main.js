@@ -80,17 +80,80 @@ if ('ontouchstart' in window) {
     renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
 }
 
-// === Ambient Light ===
-// Very soft ambient to keep the scene from being completely dark
-scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+// === Remove previous lights ===
+scene.children = scene.children.filter(obj => !(obj.isLight));
 
-const color = 0xFFFFFF;
-const intensity = 1;
-const light = new THREE.DirectionalLight( color, intensity );
-light.position.set( 0, 10, 0 );
-light.target.position.set( - 5, 0, 0 );
-scene.add( light );
-scene.add( light.target );
+// === Soft, glinty setup for glossy sphere ===
+
+// Very subtle ambient
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+
+// Main top-left highlight
+const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
+mainLight.position.set(5, 8, 5);
+scene.add(mainLight);
+
+// Secondary key from right-top, slightly bluish
+const fillLight = new THREE.DirectionalLight(0x4466ff, 1.0);
+fillLight.position.set(-5, 7, 3);
+scene.add(fillLight);
+
+// Rim / edge highlights (wraps the sphere)
+const rimLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+rimLight1.position.set(-6, 3, -5);
+scene.add(rimLight1);
+
+const rimLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
+rimLight2.position.set(6, 2, -4);
+scene.add(rimLight2);
+
+// Small sparkling point lights around for subtle glitter
+const sparklePositions = [
+    [2, 4, 2],
+    [-2, 3, 3],
+    [1, 5, -2],
+    [-1, 4, -3]
+];
+
+sparklePositions.forEach(pos => {
+    const p = new THREE.PointLight(0x88ccff, 0.3, 15);
+    p.position.set(...pos);
+    scene.add(p);
+
+    // optional gentle animation
+    gsap.to(p.position, {
+        x: "+=0.3",
+        y: "+=0.3",
+        z: "+=0.3",
+        duration: 2 + Math.random()*1,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
+    });
+});
+
+// === Adjust liquid for murky glossy look ===
+const liquid = ballParent.getObjectByName('Liquid');
+if (liquid) {
+    liquid.material = new THREE.MeshPhysicalMaterial({
+        color: 0x001133,
+        transparent: true,
+        opacity: 0.65,
+        transmission: 1.0,
+        roughness: 0.02,        // super smooth for glossy
+        metalness: 0.0,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.05,
+        ior: 1.33,
+        thickness: 0.9,
+        specularIntensity: 1.2, // strong glints
+        envMapIntensity: 1.5,   // reflections pop
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        premultipliedAlpha: true
+    });
+}
+
 
 // === Load Magic 8-Ball ===
 let die = null;
