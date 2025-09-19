@@ -56,8 +56,6 @@ console.log('Loading GLB file from:', modelPath);
 loader.load(
     modelPath,
     (gltf) => {
-        die = gltf.scene;
-        die.visible = false; // Hide the die initially
         console.log('GLB loaded successfully:', gltf);
         ballParent = gltf.scene;
         scene.add(ballParent);
@@ -187,10 +185,6 @@ controls.enableRotate = true; // Enable rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN
-};
 
 // Set up zoom constraints
 controls.minDistance = 2;  // Minimum zoom distance
@@ -301,10 +295,13 @@ renderer.domElement.addEventListener('touchmove', (e) => {
         if (dx > moveThreshold || dy > moveThreshold) {
             touchMoved = true;
         }
+    } else if (e.touches.length === 2) {
+        // Two touches - handle pinch zoom
+        // Let OrbitControls handle the zoom
+        touchMoved = true; // Prevent tap detection after pinch
     }
-    // Let OrbitControls handle two-finger touch (pinch-to-zoom)
-    // No need to prevent default as OrbitControls will handle it
-}, { passive: true });
+    e.preventDefault();
+}, { passive: false });
 
 // Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
