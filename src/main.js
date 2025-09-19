@@ -141,27 +141,27 @@ loader.load(
             });
         }
 
-        // Enhance liquid material
+        // Enhance murky dark blue liquid
         const liquid = ballParent.getObjectByName('Liquid');
         if (liquid) {
             liquid.material = new THREE.MeshPhysicalMaterial({
-                color: 0x001f5b,       // Dark, deep blue
+                color: 0x001133,       // Dark, mysterious blue
                 transparent: true,
-                opacity: 0.7,          // Slightly more visible than glass
-                transmission: 0.9,     // Allow light to pass through
-                roughness: 0.1,        // Smooth liquid surface
+                opacity: 0.85,         // Almost opaque
+                transmission: 0.2,     // Very little light passes through
+                roughness: 0.2,        // Slightly soft surface
                 metalness: 0.0,
-                clearcoat: 0.4,
-                clearcoatRoughness: 0.1,
-                ior: 1.4,              // Index of refraction for realistic bending
-                thickness: 0.8,        // Give depth to the liquid
-                specularIntensity: 1.0,
-                envMapIntensity: 1.0,  // Reflect environment nicely
-                reflectivity: 0.5,
-                side: THREE.DoubleSide, // Avoid black backfaces
+                clearcoat: 0.2,
+                clearcoatRoughness: 0.3,
+                ior: 1.3,              // Slight refraction
+                thickness: 1.0,        // Full depth for murkiness
+                specularIntensity: 0.6,
+                envMapIntensity: 0.5,  // Subtle reflections
+                side: THREE.DoubleSide,
                 premultipliedAlpha: true,
             });
         }
+
 
 
         // === Animations ===
