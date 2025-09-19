@@ -205,7 +205,7 @@ controls.update = function() {
     const euler = new THREE.Euler().setFromQuaternion(ballParent.quaternion, 'XYZ');
     
     // Keep only X rotation, reset Y and Z
-    euler.y = 0;
+    euler.x = 0;
     euler.z = 0;
     
     // Apply the rotation to the ball
