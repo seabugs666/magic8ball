@@ -52,7 +52,7 @@ renderer.domElement.addEventListener('touchmove', preventDefault, { passive: fal
 
 // === Lights ===
 // Camera-aligned key light
-let keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
+let keyLight = new THREE.DirectionalLight(0xffffff, 0.05);
 keyLight.position.set(0, 3, 1);
 scene.add(keyLight);
 
