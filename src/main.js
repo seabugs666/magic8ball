@@ -176,13 +176,17 @@ function triggerSpin() {
     });
 }
 
-// Configure orbit controls for up-down rotation only
+// Configure orbit controls for up-down rotation and zoom
 controls.enablePan = false;  // Disable panning
 controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
 controls.enableRotate = true; // Enable rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
+
+// Set up zoom constraints
+controls.minDistance = 2;  // Minimum zoom distance
+controls.maxDistance = 10; // Maximum zoom distance
 
 // Set up rotation constraints for up-down rotation only (around X-axis)
 controls.minPolarAngle = 0; // Allow looking all the way up
@@ -192,8 +196,8 @@ controls.maxAzimuthAngle = 0; // Prevent horizontal rotation
 
 // Set up touch controls
 controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate up/down
-    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom
+    ONE: THREE.TOUCH.ROTATE,  // Single finger for up-down rotation
+    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for pinch-to-zoom
 };
 
 // Lock to Y-axis rotation only (up-down)
@@ -256,54 +260,66 @@ function triggerVisualFeedback() {
     });
 }
 
-// Touch start handler
-let touchCount = 0;
+// Touch state tracking
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+const moveThreshold = 10; // pixels of movement allowed before considering it a swipe
 
+// Touch start handler
 renderer.domElement.addEventListener('touchstart', (e) => {
-    touchCount = e.touches.length;
-    
-    // Only handle single touch for tap detection
     if (e.touches.length === 1) {
         touchStartTime = Date.now();
-        // Only prevent default for single touch to allow pinch zoom
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchMoved = false;
         e.preventDefault();
     }
 }, { passive: false });
 
-// Touch move handler - only prevent default for single touch
+// Touch move handler
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
+        // Check if touch moved beyond threshold
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchStartX);
+        const dy = Math.abs(touch.clientY - touchStartY);
+        
+        if (dx > moveThreshold || dy > moveThreshold) {
+            touchMoved = true;
+        }
         e.preventDefault();
     }
-    // Allow multi-touch events to pass through for pinch zoom
 }, { passive: false });
 
-// Touch end handler - trigger animation on any touch end
-renderer.domElement.addEventListener('touchend', () => {
+// Touch end handler
+renderer.domElement.addEventListener('touchend', (e) => {
     const now = Date.now();
-    if (now - lastInteractionTime < interactionCooldown) {
-        return;
-    }
-    
     const dt = now - touchStartTime;
     
-    // Trigger on any touch that's not too long
-    if (dt < tapTimeThreshold) {
+    // Only trigger if it was a quick tap (not a swipe) and not during cooldown
+    if (!touchMoved && dt < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
         triggerHapticFeedback();
         triggerVisualFeedback();
         triggerSpin();
         lastInteractionTime = now;
     }
-}, { passive: true });
+    
+    touchMoved = false;
+    e.preventDefault();
+}, { passive: false });
 
-// Click handler for both mobile and desktop
-document.addEventListener('click', () => {
-    const now = Date.now();
-    if (now - lastInteractionTime >= interactionCooldown) {
-        triggerHapticFeedback();
-        triggerVisualFeedback();
-        triggerSpin();
-        lastInteractionTime = now;
+// Click handler for desktop
+document.addEventListener('click', (e) => {
+    // Only handle if not from touch events (to prevent double-trigger on mobile)
+    if (e.pointerType !== 'touch') {
+        const now = Date.now();
+        if ((now - lastInteractionTime) >= interactionCooldown) {
+            triggerHapticFeedback();
+            triggerVisualFeedback();
+            triggerSpin();
+            lastInteractionTime = now;
+        }
     }
 });
 
