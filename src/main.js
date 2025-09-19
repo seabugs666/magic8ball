@@ -194,10 +194,16 @@ function triggerSpin() {
                 actions.forEach((a) => a.stop());
                 const action = actions[Math.floor(Math.random() * actions.length)];
                 action.reset();
-                action.setLoop(THREE.LoopOnce, 0);
+                action.setLoop(THREE.LoopOnce, 1); // Play through once
                 action.clampWhenFinished = true;
-                action.timeScale = 0.5;
+                action.timeScale = 0.7; // Slightly faster playback
+                action.setEffectiveTimeScale(1.5); // Speed up the animation
+                action.setEffectiveWeight(1.0); // Full influence
                 action.play();
+                
+                // Add some variation to the animation
+                const randomSpeed = 0.8 + Math.random() * 0.4; // Random speed between 0.8 and 1.2
+                action.setDuration(action.getClip().duration * randomSpeed);
             }
             isAnimating = false;
         }
