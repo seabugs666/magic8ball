@@ -50,23 +50,23 @@ const preventDefault = (e) => { if(e.touches.length > 1) e.preventDefault(); };
 renderer.domElement.addEventListener('touchstart', preventDefault, { passive: false });
 renderer.domElement.addEventListener('touchmove', preventDefault, { passive: false });
 
-// === Lights ===
-const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.0);
+/// Stronger main light to actually illuminate the ball
+const dirLight1 = new THREE.DirectionalLight(0xffffff, 3.0);
 dirLight1.position.set(5, 10, 7);
 scene.add(dirLight1);
 
-// Rim / edge lights
-const rim1 = new THREE.DirectionalLight(0xffffff, 0.5);
-rim1.position.set(5, 5, -5);
+// Slightly brighter rim lights
+const rim1 = new THREE.DirectionalLight(0xffffff, 1.2);
+rim1.position.set(-5, 5, -5);
 scene.add(rim1);
 
-const rim2 = new THREE.PointLight(0x88ccff, 0.3, 15);
-rim2.position.set(-2, 4, 2);
+const rim2 = new THREE.PointLight(0x88ccff, 0.8, 15); // increase intensity
+rim2.position.set(2, 4, 2);
 scene.add(rim2);
 gsap.to(rim2.position, { x: "+=0.3", y: "+=0.3", z: "+=0.3", duration: 2, yoyo:true, repeat:-1, ease:"sine.inOut" });
 
-// Ambient subtle fill
-scene.add(new THREE.AmbientLight(0xffffff, 5));
+// Subtle ambient to lift shadows, but not too much
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
 
 // === Load Magic 8-Ball ===
 let die = null;
