@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { gsap } from 'gsap';
 
 // === Scene & Camera ===
@@ -26,79 +25,49 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.5; // boost overall brightness
+renderer.domElement.style.touchAction = 'none';
 
 // === Controls ===
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
-controls.screenSpacePanning = false;
 controls.enablePan = false;
 controls.enableZoom = true;
 controls.enableRotate = true;
 controls.rotateSpeed = 0.5;
 controls.zoomSpeed = 1.5;
-controls.minDistance = 2;
-controls.maxDistance = 10;
-
-// Lock horizontal rotation, allow full up/down rotation
+// Lock horizontal rotation, allow up/down only
 controls.minAzimuthAngle = 0;
 controls.maxAzimuthAngle = 0;
 controls.minPolarAngle = 0;
 controls.maxPolarAngle = Math.PI;
 
-// Touch gestures
+// Touch config for mobile
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-renderer.domElement.style.touchAction = 'none';
 
-// === HDRI Environment ===
-new RGBELoader().setPath('assets/hdri/').load('studio_small_08_1k.hdr', function(texture) {
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    scene.environment = texture;
-    scene.background = new THREE.Color(0x111111);
-});
+// Prevent multi-touch scroll
+const preventDefault = (e) => { if(e.touches.length > 1) e.preventDefault(); };
+renderer.domElement.addEventListener('touchstart', preventDefault, { passive: false });
+renderer.domElement.addEventListener('touchmove', preventDefault, { passive: false });
 
 // === Lights ===
-scene.add(new THREE.AmbientLight(0xffffff, 0.2)); // subtle ambient
-
-// Main directional highlight
-const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
-mainLight.position.set(5, 8, 5);
-scene.add(mainLight);
-
-// Secondary key light (bluish)
-const fillLight = new THREE.DirectionalLight(0x4466ff, 0.8);
-fillLight.position.set(-5, 7, 3);
-scene.add(fillLight);
+// Camera-aligned key light
+let keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+scene.add(keyLight);
+scene.add(keyLight.target); // target must be in scene
 
 // Rim / edge lights
-const rimLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
-rimLight1.position.set(-6, 3, -5);
-scene.add(rimLight1);
+const rim1 = new THREE.DirectionalLight(0xffffff, 0.5);
+rim1.position.set(5, 5, -5);
+scene.add(rim1);
 
-const rimLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-rimLight2.position.set(6, 2, -4);
-scene.add(rimLight2);
+const rim2 = new THREE.PointLight(0x88ccff, 0.3, 15);
+rim2.position.set(-2, 4, 2);
+scene.add(rim2);
+gsap.to(rim2.position, { x: "+=0.3", y: "+=0.3", z: "+=0.3", duration: 2, yoyo:true, repeat:-1, ease:"sine.inOut" });
 
-// Sparkling points for subtle glitter
-[
-    [2, 4, 2],
-    [-2, 3, 3],
-    [1, 5, -2],
-    [-1, 4, -3]
-].forEach(pos => {
-    const p = new THREE.PointLight(0x88ccff, 0.3, 15);
-    p.position.set(...pos);
-    scene.add(p);
-    gsap.to(p.position, {
-        x: "+=0.3", y: "+=0.3", z: "+=0.3",
-        duration: 2 + Math.random(),
-        yoyo: true,
-        repeat: -1,
-        ease: "sine.inOut"
-    });
-});
+// Ambient subtle fill
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
 
 // === Load Magic 8-Ball ===
 let die = null;
@@ -107,160 +76,136 @@ let mixer = null;
 let actions = [];
 
 const loader = new GLTFLoader();
-loader.load('assets/magic8ball.glb', (gltf) => {
-    ballParent = gltf.scene;
-    scene.add(ballParent);
+loader.load(
+    'assets/magic8ball.glb',
+    (gltf) => {
+        ballParent = gltf.scene;
+        scene.add(ballParent);
 
-    // Find die
-    die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die');
-    if (!die) {
-        ballParent.traverse(c => { if (c.isMesh && !die) die = c; });
-    }
-    if (die) die.visible = false;
-    if (!die) die = ballParent;
+        die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die') || ballParent;
+        die.visible = false;
 
-    // Glass material
-    const glass = ballParent.getObjectByName('Glass');
-    if (glass) {
-        glass.material = new THREE.MeshPhysicalMaterial({
-            color: 0x88aadd,
-            transparent: true,
-            opacity: 0.5,
-            transmission: 1.0,
-            roughness: 0.05,
-            metalness: 0.0,
-            clearcoat: 0.3,
-            clearcoatRoughness: 0.2,
-            ior: 1.33,
-            thickness: 0.1,
-            specularIntensity: 1.0,
-            envMapIntensity: 1.8,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-            premultipliedAlpha: true,
-        });
-    }
+        const glass = ballParent.getObjectByName('Glass');
+        if(glass){
+            glass.material = new THREE.MeshPhysicalMaterial({
+                color: 0x88aadd,
+                transparent: true,
+                opacity: 0.5,
+                transmission: 1.0,
+                roughness: 0.05,
+                metalness: 0,
+                clearcoat: 0.3,
+                clearcoatRoughness: 0.2,
+                ior: 1.33,
+                thickness: 0.1,
+                specularIntensity: 0.5,
+                envMapIntensity: 0.8,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                premultipliedAlpha: true,
+            });
+        }
 
-    // Dark blue murky liquid
-    const liquid = ballParent.getObjectByName('Liquid');
-    if (liquid) {
-        liquid.material = new THREE.MeshPhysicalMaterial({
-            color: 0x001133,
-            transparent: true,
-            opacity: 0.8,
-            transmission: 0.3,
-            roughness: 0.15,
-            metalness: 0.0,
-            clearcoat: 0.2,
-            clearcoatRoughness: 0.25,
-            ior: 1.33,
-            thickness: 1.0,
-            specularIntensity: 1.2,
-            envMapIntensity: 2.0,
-            side: THREE.DoubleSide,
-            premultipliedAlpha: true,
-        });
-    }
+        const liquid = ballParent.getObjectByName('Liquid');
+        if(liquid){
+            liquid.material = new THREE.MeshPhysicalMaterial({
+                color: 0x001133,
+                transparent: true,
+                opacity: 1,
+                transmission: 0.2,
+                roughness: 0.2,
+                metalness: 0,
+                clearcoat: 0.2,
+                clearcoatRoughness: 0.3,
+                ior: 1.3,
+                thickness: 1.0,
+                specularIntensity: 0.6,
+                envMapIntensity: 0.5,
+                side: THREE.DoubleSide,
+                premultipliedAlpha: true,
+            });
+        }
 
-    // Animations
-    if (gltf.animations && gltf.animations.length) {
-        mixer = new THREE.AnimationMixer(ballParent);
-        gltf.animations.forEach(clip => {
-            const action = mixer.clipAction(clip);
-            actions.push(action);
-        });
-    }
+        if(gltf.animations.length){
+            mixer = new THREE.AnimationMixer(ballParent);
+            gltf.animations.forEach(clip => actions.push(mixer.clipAction(clip)));
+        }
 
-    const loading = document.getElementById('loading');
-    if (loading) loading.style.display = 'none';
-}, undefined, (err) => console.error(err));
+        const loading = document.getElementById('loading');
+        if(loading) loading.style.display = 'none';
+    },
+    (progress) => { if(progress.total) console.log(`Loading: ${((progress.loaded/progress.total)*100).toFixed(2)}%`); },
+    (err) => console.error('Error loading GLB:', err)
+);
 
-// === Spin Function ===
-let isAnimating = false;
-function shakeObject(obj, intensity = 0.01, duration = 0.2) {
-    if (!obj) return;
-    const orig = obj.position.clone();
+// === Helpers ===
+function shakeObject(object, intensity=0.01, duration=0.2){
+    if(!object) return;
+    const orig = object.position.clone();
     const interval = setInterval(() => {
-        obj.position.x = orig.x + (Math.random() - 0.5) * intensity;
-        obj.position.y = orig.y + (Math.random() - 0.5) * intensity;
-    }, 16);
-    setTimeout(() => { clearInterval(interval); obj.position.copy(orig); }, duration*1000);
+        object.position.x = orig.x + (Math.random()-0.5)*intensity;
+        object.position.y = orig.y + (Math.random()-0.5)*intensity;
+    },16);
+    setTimeout(()=>{ clearInterval(interval); object.position.copy(orig); }, duration*1000);
 }
 
-function triggerSpin() {
-    if (!die || isAnimating) return;
+// Spin function
+let isAnimating = false;
+function triggerSpin(){
+    if(!die || isAnimating) return;
     isAnimating = true;
-    if (ballParent) shakeObject(ballParent, 0.03, 0.3);
+    if(ballParent) shakeObject(ballParent,0.03,0.3);
 
-    const tl = gsap.timeline({
-        onComplete() {
-            if (actions.length) {
-                actions.forEach(a => a.stop());
+    const tl = gsap.timeline({onComplete: ()=>{
+            if(actions.length){
                 const action = actions[Math.floor(Math.random()*actions.length)];
                 action.reset();
-                action.setLoop(THREE.LoopOnce, 1);
-                action.clampWhenFinished = true;
-                action.timeScale = 0.7;
+                action.setLoop(THREE.LoopOnce,1);
+                action.clampWhenFinished=true;
+                action.timeScale=0.7;
                 action.play();
             }
-            isAnimating = false;
-        }
-    });
+            isAnimating=false;
+        }});
 
-    tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 4,
-        duration: 0.15,
-        ease: 'sine.in',
-        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
-    });
-    tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 16,
-        duration: 0.3,
-        ease: 'power2.inOut',
-        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
-    }, '-=0.1');
-    tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 10,
-        duration: 0.4,
-        ease: 'sine.out',
-        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
-    }, '-=0.1');
-    tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 4,
-        duration: 0.6,
-        ease: 'elastic.out(1,0.7)',
-        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
-    }, '-=0.1');
+    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*4, duration:0.15, ease:'sine.in', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) });
+    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*16, duration:0.3, ease:'power2.inOut', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
+    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*10, duration:0.4, ease:'sine.out', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
+    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*4, duration:0.6, ease:'elastic.out(1,0.7)', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
 }
 
 // === Event Listeners ===
-renderer.domElement.addEventListener('dblclick', e => { if (e.pointerType!=='touch') triggerSpin(); });
+renderer.domElement.addEventListener('dblclick', e=>{ if(e.pointerType!=='touch') triggerSpin(); });
 
-// Mobile taps
-let touchStartTime = 0, lastInteractionTime = 0;
-const interactionCooldown = 1000, tapThreshold = 300;
+let touchStartTime=0, lastInteractionTime=0;
+const interactionCooldown=1000, tapTimeThreshold=300;
 let touchStartX=0, touchStartY=0, touchMoved=false;
 
-renderer.domElement.addEventListener('touchstart', e => {
-    if (e.touches.length===1) {
-        touchStartTime = Date.now();
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
+function triggerHaptic(){ if('vibrate' in navigator) navigator.vibrate(50); }
+function triggerVisual(){ if(ballParent) gsap.to(ballParent.scale,{ x:1.05,y:1.05,z:1.05,duration:0.1,yoyo:true,repeat:1,ease:'power2.inOut' }); }
+
+renderer.domElement.addEventListener('touchstart', e=>{
+    if(e.touches.length===1){
+        touchStartTime=Date.now();
+        touchStartX=e.touches[0].clientX;
+        touchStartY=e.touches[0].clientY;
         touchMoved=false;
     }
-}, {passive:true});
-renderer.domElement.addEventListener('touchmove', e => {
-    if (e.touches.length===1) {
+},{ passive:true });
+
+renderer.domElement.addEventListener('touchmove', e=>{
+    if(e.touches.length===1){
         const dx=Math.abs(e.touches[0].clientX-touchStartX);
         const dy=Math.abs(e.touches[0].clientY-touchStartY);
-        if(dx>10 || dy>10) touchMoved=true;
+        if(dx>10||dy>10) touchMoved=true;
     }
-}, {passive:true});
+},{ passive:true });
+
 renderer.domElement.addEventListener('touchend', ()=>{
     const now = Date.now();
-    if(!touchMoved && (now-touchStartTime)<tapThreshold && (now-lastInteractionTime)>=interactionCooldown){
-        if('vibrate' in navigator) navigator.vibrate(50);
-        gsap.to(ballParent.scale,{x:1.05,y:1.05,z:1.05,duration:0.1,yoyo:true,repeat:1,ease:'power2.inOut'});
+    if(!touchMoved&&(now-touchStartTime)<tapTimeThreshold&&(now-lastInteractionTime)>=interactionCooldown){
+        triggerHaptic();
+        triggerVisual();
         triggerSpin();
         lastInteractionTime=now;
     }
@@ -268,20 +213,24 @@ renderer.domElement.addEventListener('touchend', ()=>{
 });
 
 // === Resize ===
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth/window.innerHeight;
+window.addEventListener('resize', ()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === Animate Loop ===
+// === Animate loop ===
 const clock = new THREE.Clock();
-function animate() {
+function animate(){
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     if(mixer) mixer.update(delta);
     controls.update();
-    renderer.render(scene, camera);
+    if(ballParent && keyLight) {
+        keyLight.position.copy(camera.position);
+        keyLight.target.position.copy(ballParent.position);
+    }
+    renderer.render(scene,camera);
 }
 animate();
 
