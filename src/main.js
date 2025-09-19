@@ -30,6 +30,19 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+controls.enablePan = false;
+controls.enableZoom = true;
+controls.enableRotate = true;
+controls.rotateSpeed = 0.5;
+controls.zoomSpeed = 1.5;
+controls.minDistance = 2;
+controls.maxDistance = 10;
+
+// 🔑 Fix pinch zoom (mobile) — use standard OrbitControls touch mapping
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY
+};
 
 // === Lights ===
 scene.add(new THREE.AmbientLight(0xffffff, 5.0));
@@ -139,9 +152,6 @@ function triggerSpin() {
 
     if (ballParent) shakeObject(ballParent, 0.03, 0.3);
 
-    // Remove unused quaternion variables since we're using rotation directly
-
-    // Create a timeline for more control over the animation
     const tl = gsap.timeline({
         onComplete() {
             if (actions.length) {
@@ -157,122 +167,25 @@ function triggerSpin() {
         }
     });
 
-    // First phase: Super fast initial spin with strong ease-in
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 8, // More initial rotation
+        x: die.rotation.x + Math.PI * 8,
         duration: 0.2,
         ease: 'power4.in',
-        onUpdate: () => {
-            die.quaternion.setFromEuler(die.rotation);
-        }
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     });
-    
-    // Second phase: Fast spin with slight deceleration
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 12, // Significant additional rotation
+        x: die.rotation.x + Math.PI * 12,
         duration: 0.4,
         ease: 'sine.out',
-        onUpdate: () => {
-            die.quaternion.setFromEuler(die.rotation);
-        }
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.05');
-    
-    // Final phase: Slow down and settle with bounce
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 6, // Final rotation
+        x: die.rotation.x + Math.PI * 6,
         duration: 0.6,
-        ease: 'elastic.out(1, 0.5)', // Bouncy finish
-        onUpdate: () => {
-            die.quaternion.setFromEuler(die.rotation);
-        }
+        ease: 'elastic.out(1, 0.5)',
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.1');
 }
-
-// Configure orbit controls for up-down rotation and zoom
-controls.enablePan = false;  // Disable panning
-controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
-controls.enableRotate = true; // Enable rotation
-controls.enableDamping = true;
-controls.dampingFactor = 0.1;
-controls.rotateSpeed = 0.5;
-controls.zoomSpeed = 1.0; // Increased zoom speed for better responsiveness
-
-// Configure touch controls
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN
-};
-controls.screenSpacePanning = true;
-
-// Enable zoom and set up constraints
-controls.enableZoom = true;
-controls.zoomSpeed = 1.5; // Increase zoom speed for better responsiveness
-controls.minDistance = 2;
-controls.maxDistance = 10;
-
-// Add touch event listeners for better iOS handling
-renderer.domElement.style.touchAction = 'none';
-renderer.domElement.addEventListener('gesturestart', (e) => {
-    e.preventDefault();
-    touchMoved = true;
-});
-
-renderer.domElement.addEventListener('gesturechange', (e) => {
-    e.preventDefault();
-    touchMoved = true;
-});
-
-renderer.domElement.addEventListener('gestureend', (e) => {
-    e.preventDefault();
-    touchMoved = true;
-});
-
-// Standard mouse controls
-controls.mouseButtons = {
-    LEFT: THREE.MOUSE.ROTATE,
-    MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN
-};
-
-// Set up zoom constraints
-controls.minDistance = 2;  // Minimum zoom distance
-controls.maxDistance = 10; // Maximum zoom distance
-
-// Set up rotation constraints for up-down rotation only (around X-axis)
-controls.minPolarAngle = 0; // Allow looking all the way up
-controls.maxPolarAngle = Math.PI; // Allow looking all the way down
-controls.minAzimuthAngle = 0; // Prevent horizontal rotation
-controls.maxAzimuthAngle = 0; // Prevent horizontal rotation
-
-// Set up touch controls
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,  // Single finger for up-down rotation
-    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for pinch-to-zoom
-};
-
-// Lock to Y-axis rotation only (up-down)
-const originalUpdate = controls.update;
-controls.update = function() {
-    originalUpdate.call(this);
-
-    if (!ballParent) return;
-
-    // Get the camera's up vector
-    const up = new THREE.Vector3(0, 1, 0);
-
-    // Make camera look at the ball, but only allow up/down movement
-    camera.lookAt(ballParent.position);
-
-    // Lock camera's up vector to prevent tilting
-    camera.up.copy(up);
-
-    // Force camera to maintain distance from ball
-    const distance = 5; // Adjust this value as needed
-    camera.position.sub(controls.target);
-    camera.position.setLength(distance);
-    camera.position.add(ballParent.position);
-    controls.target.copy(ballParent.position);
-};
 
 // === Desktop double-click ===
 renderer.domElement.addEventListener('dblclick', triggerSpin);
@@ -280,29 +193,19 @@ renderer.domElement.addEventListener('dblclick', triggerSpin);
 // === Mobile Interactions ===
 let touchStartTime = 0;
 let lastInteractionTime = 0;
-const interactionCooldown = 1000; // ms
-const tapTimeThreshold = 300; // ms
+const interactionCooldown = 1000;
+const tapTimeThreshold = 300;
 
-// Haptic feedback helper
 function triggerHapticFeedback() {
     if ('vibrate' in navigator) {
-        navigator.vibrate = navigator.vibrate ||
-                           navigator.webkitVibrate ||
-                           navigator.mozVibrate ||
-                           navigator.msVibrate;
-        navigator.vibrate(50); // 50ms vibration
+        navigator.vibrate(50);
     }
 }
 
-// Visual feedback helper
 function triggerVisualFeedback() {
     if (!ballParent) return;
-
-    // Add a subtle scale effect
     gsap.to(ballParent.scale, {
-        x: 1.05,
-        y: 1.05,
-        z: 1.05,
+        x: 1.05, y: 1.05, z: 1.05,
         duration: 0.1,
         yoyo: true,
         repeat: 1,
@@ -310,59 +213,43 @@ function triggerVisualFeedback() {
     });
 }
 
-// Touch state tracking
 let touchStartX = 0;
 let touchStartY = 0;
 let touchMoved = false;
-const moveThreshold = 10; // pixels of movement allowed before considering it a swipe
+const moveThreshold = 10;
 
-// Touch start handler
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
-        // Single touch - handle rotation/tap
         touchStartTime = Date.now();
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchMoved = false;
-    } else if (e.touches.length === 2) {
-        // Two touches - handle pinch zoom
-        touchMoved = true;
     }
 }, { passive: true });
 
-// Touch move handler
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
-        // Single touch - check for swipe
         const touch = e.touches[0];
         const dx = Math.abs(touch.clientX - touchStartX);
         const dy = Math.abs(touch.clientY - touchStartY);
-
         if (dx > moveThreshold || dy > moveThreshold) {
             touchMoved = true;
         }
     }
 }, { passive: true });
 
-// Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
     const now = Date.now();
-
-    // Only trigger if it was a quick tap (not a swipe) and not during cooldown
     if (!touchMoved && (now - touchStartTime) < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
         triggerHapticFeedback();
         triggerVisualFeedback();
         triggerSpin();
         lastInteractionTime = now;
     }
-
-    // Reset touch state
     touchMoved = false;
 });
 
-// Click handler for desktop
 document.addEventListener('click', (e) => {
-    // Only handle if not from touch events (to prevent double-trigger on mobile)
     if (e.pointerType !== 'touch') {
         const now = Date.now();
         if ((now - lastInteractionTime) >= interactionCooldown) {
@@ -385,13 +272,11 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
-
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
-
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
 
-console.log('🎱 Magic 8-Ball ready: double-click (desktop) or swipe hard (mobile)');
+console.log('🎱 Magic 8-Ball ready: double-click (desktop) or tap (mobile)');
