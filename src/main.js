@@ -39,17 +39,6 @@ controls.zoomSpeed = 1.5;
 controls.minDistance = 2;
 controls.maxDistance = 10;
 
-// Lock rotation to only up and down
-controls.minPolarAngle = 0; // Allow looking all the way up
-controls.maxPolarAngle = Math.PI; // Allow looking all the way down
-
-// Disable horizontal rotation
-controls.enableRotate = true;
-controls.rotateSpeed = 0.5;
-
-// Keep camera looking at the center
-camera.lookAt(0, 0, 0);
-
 // Configure touch controls for mobile
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
