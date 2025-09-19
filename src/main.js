@@ -148,8 +148,10 @@ loader.load('assets/magic8ball.glb',
             gltf.animations.forEach((clip) => { actions.push(mixer.clipAction(clip)); });
         }
 
-        document.getElementById('loading')?.style.display = 'none';
+        const loading = document.getElementById('loading');
+        if (loading) loading.style.display = 'none';
         console.log('Magic 8-Ball loaded.');
+
     },
     (progress) => { if (progress.total) console.log('Loading progress:', ((progress.loaded / progress.total) * 100).toFixed(2) + '%'); },
     (err) => console.error('Error loading model:', err)
@@ -217,6 +219,7 @@ renderer.domElement.addEventListener('touchmove', e => {
         if (dx > moveThreshold || dy > moveThreshold) touchMoved = true;
     }
 }, { passive: true });
+
 
 renderer.domElement.addEventListener('touchend', () => {
     const now = Date.now();
