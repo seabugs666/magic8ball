@@ -125,7 +125,7 @@ loader.load(
             glass.material = new THREE.MeshPhysicalMaterial({
                 color: 0x88aadd,
                 transparent: true,
-                opacity: 0.1,
+                opacity: .5,
                 transmission: 1.0,
                 roughness: 0.05,
                 metalness: 0.0,
