@@ -52,7 +52,7 @@ renderer.domElement.addEventListener('touchmove', preventDefault, { passive: fal
 
 // === Lights ===
 // Camera-aligned key light
-let keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+let keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
 scene.add(keyLight);
 scene.add(keyLight.target); // target must be in scene
 
@@ -67,7 +67,7 @@ scene.add(rim2);
 gsap.to(rim2.position, { x: "+=0.3", y: "+=0.3", z: "+=0.3", duration: 2, yoyo:true, repeat:-1, ease:"sine.inOut" });
 
 // Ambient subtle fill
-scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+scene.add(new THREE.AmbientLight(0xffffff, 5));
 
 // === Load Magic 8-Ball ===
 let die = null;
