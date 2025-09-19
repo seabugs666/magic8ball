@@ -176,18 +176,18 @@ function triggerSpin() {
     });
 }
 
+// Disable orbit controls panning
+controls.enablePan = false;
+controls.enableZoom = false;
+
 // === Desktop double-click ===
 renderer.domElement.addEventListener('dblclick', triggerSpin);
 
 // === Mobile Interactions ===
-let touchStartPos = null;
 let touchStartTime = 0;
 let lastInteractionTime = 0;
 const interactionCooldown = 1000; // ms
-const tapThreshold = 5; // pixels
 const tapTimeThreshold = 300; // ms
-const swipeThreshold = 50; // reduced from 100px
-const swipeSpeedThreshold = 0.3; // reduced from 0.5 px/ms
 
 // Haptic feedback helper
 function triggerHapticFeedback() {
@@ -219,62 +219,36 @@ function triggerVisualFeedback() {
 // Touch start handler
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    touchStartPos = { x: touch.clientX, y: touch.clientY };
     touchStartTime = Date.now();
-}, { passive: true });
-
-// Touch move handler (for preventing scrolling during swipe)
-renderer.domElement.addEventListener('touchmove', (e) => {
-    if (!touchStartPos) return;
-    
-    // Prevent scrolling if we're moving enough to be considered a swipe
-    if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const dx = touch.clientX - touchStartPos.x;
-        const dy = touch.clientY - touchStartPos.y;
-        
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-            e.preventDefault();
-        }
-    }
+    // Prevent default to stop any panning/zooming
+    e.preventDefault();
 }, { passive: false });
 
-// Touch end handler
+// Touch move handler - prevent default to stop any panning/zooming
+renderer.domElement.addEventListener('touchmove', (event) => {
+    event.preventDefault();
+}, { passive: false });
+
+// Touch end handler - trigger animation on any touch end
 renderer.domElement.addEventListener('touchend', (e) => {
     const now = Date.now();
-    if (!touchStartPos || now - lastInteractionTime < interactionCooldown) {
-        touchStartPos = null;
+    if (now - lastInteractionTime < interactionCooldown) {
         return;
     }
-
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartPos.x;
-    const dy = touch.clientY - touchStartPos.y;
+    
     const dt = now - touchStartTime;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const speed = distance / Math.max(dt, 1); // prevent division by zero
-
-    // Check for tap
-    if (distance < tapThreshold && dt < tapTimeThreshold) {
+    
+    // Trigger on any touch that's not too long
+    if (dt < tapTimeThreshold) {
         triggerHapticFeedback();
         triggerVisualFeedback();
         triggerSpin();
         lastInteractionTime = now;
     }
-    // Check for swipe
-    else if (distance > swipeThreshold && speed > swipeSpeedThreshold) {
-        triggerHapticFeedback();
-        triggerSpin();
-        lastInteractionTime = now;
-    }
-
-    touchStartPos = null;
 }, { passive: true });
 
-// Also make the ball respond to clicks for accessibility
+// Click handler for both mobile and desktop
 document.addEventListener('click', () => {
-    if (window.innerWidth >= 768) return; // Only on mobile
     const now = Date.now();
     if (now - lastInteractionTime >= interactionCooldown) {
         triggerHapticFeedback();
