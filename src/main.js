@@ -176,9 +176,14 @@ function triggerSpin() {
     });
 }
 
-// Disable orbit controls panning
-controls.enablePan = false;
-controls.enableZoom = false;
+// Configure orbit controls
+controls.enablePan = false;  // Disable panning
+controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
+controls.enableRotate = false; // Disable rotation
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate
+    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom and pan
+};
 
 // === Desktop double-click ===
 renderer.domElement.addEventListener('dblclick', triggerSpin);
@@ -217,16 +222,25 @@ function triggerVisualFeedback() {
 }
 
 // Touch start handler
+let touchCount = 0;
+
 renderer.domElement.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) return;
-    touchStartTime = Date.now();
-    // Prevent default to stop any panning/zooming
-    e.preventDefault();
+    touchCount = e.touches.length;
+    
+    // Only handle single touch for tap detection
+    if (e.touches.length === 1) {
+        touchStartTime = Date.now();
+        // Only prevent default for single touch to allow pinch zoom
+        e.preventDefault();
+    }
 }, { passive: false });
 
-// Touch move handler - prevent default to stop any panning/zooming
-renderer.domElement.addEventListener('touchmove', (event) => {
-    event.preventDefault();
+// Touch move handler - only prevent default for single touch
+renderer.domElement.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1) {
+        e.preventDefault();
+    }
+    // Allow multi-touch events to pass through for pinch zoom
 }, { passive: false });
 
 // Touch end handler - trigger animation on any touch end
