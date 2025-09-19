@@ -1,17 +1,21 @@
-body, html {
+/* Make HTML and body full size and transparent */
+html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     height: 100%;
     width: 100%;
-    background-color: transparent;
+    background: transparent; /* <-- transparent instead of #111 */
     font-family: Arial, sans-serif;
 }
 
+/* Make canvas fill entire viewport and transparent */
 canvas {
     display: block;
+    background: transparent; /* <-- ensures WebGL canvas is see-through */
 }
 
+/* Loading screen overlay (optional) */
 #loading {
     position: fixed;
     top: 0;
@@ -21,7 +25,7 @@ canvas {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #111;
+    background: rgba(17, 17, 17, 0.9); /* semi-transparent dark overlay */
     color: white;
     z-index: 1000;
 }
