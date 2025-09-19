@@ -51,10 +51,6 @@ renderer.domElement.addEventListener('touchstart', preventDefault, { passive: fa
 renderer.domElement.addEventListener('touchmove', preventDefault, { passive: false });
 
 // === Lights ===
-// Camera-aligned key light
-let keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
-scene.add(keyLight);
-scene.add(keyLight.target); // target must be in scene
 
 // Rim / edge lights
 const rim1 = new THREE.DirectionalLight(0xffffff, 0.5);
