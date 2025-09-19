@@ -230,7 +230,7 @@ renderer.domElement.addEventListener('touchmove', (event) => {
 }, { passive: false });
 
 // Touch end handler - trigger animation on any touch end
-renderer.domElement.addEventListener('touchend', (e) => {
+renderer.domElement.addEventListener('touchend', () => {
     const now = Date.now();
     if (now - lastInteractionTime < interactionCooldown) {
         return;
