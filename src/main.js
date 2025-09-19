@@ -84,27 +84,13 @@ if ('ontouchstart' in window) {
 // Very soft ambient to keep the scene from being completely dark
 scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// === Key Directional Lights ===
-// Main highlight from above-right
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
-keyLight.position.set(6, 10, 6);
-keyLight.castShadow = true; // subtle shadows for depth
-scene.add(keyLight);
-
-// Fill light with subtle blue tint to enhance liquid color
-const fillLight = new THREE.DirectionalLight(0x3399ff, 1.2);
-fillLight.position.set(-4, 5, 4);
-scene.add(fillLight);
-
-// Back rim light for glinty edge highlights
-const rimLight = new THREE.DirectionalLight(0xffffff, 3.0);
-rimLight.position.set(-6, 7, -5);
-scene.add(rimLight);
-
-// Optional subtle ambient colored glint
-const sparkleLight = new THREE.PointLight(0x88ccff, 0.8, 15);
-sparkleLight.position.set(3, 5, 2);
-scene.add(sparkleLight);
+const color = 0xFFFFFF;
+const intensity = 1;
+const light = new THREE.DirectionalLight( color, intensity );
+light.position.set( 0, 10, 0 );
+light.target.position.set( - 5, 0, 0 );
+scene.add( light );
+scene.add( light.target );
 
 // === Load Magic 8-Ball ===
 let die = null;
