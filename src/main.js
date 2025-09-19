@@ -185,6 +185,16 @@ controls.enableRotate = true; // Enable rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN
+};
+controls.screenSpacePanning = false; // Important for mobile zoom
+controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN
+};
 
 // Set up zoom constraints
 controls.minDistance = 2;  // Minimum zoom distance
@@ -295,13 +305,10 @@ renderer.domElement.addEventListener('touchmove', (e) => {
         if (dx > moveThreshold || dy > moveThreshold) {
             touchMoved = true;
         }
-    } else if (e.touches.length === 2) {
-        // Two touches - handle pinch zoom
-        // Let OrbitControls handle the zoom
-        touchMoved = true; // Prevent tap detection after pinch
     }
-    e.preventDefault();
-}, { passive: false });
+    // Let OrbitControls handle the touch events for zooming
+    // No need to preventDefault as it can interfere with the controls
+}, { passive: true });
 
 // Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
