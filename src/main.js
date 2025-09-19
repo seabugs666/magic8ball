@@ -5,6 +5,11 @@ import { gsap } from 'gsap';
 
 // === Scene & Camera ===
 const scene = new THREE.Scene();
+// === Purple Fog ===
+scene.fog = new THREE.FogExp2(0x440066, 0.05);
+// 0x440066 = deep purple
+// 0.05 = fog density (adjust for thicker or thinner fog)
+
 scene.background = new THREE.Color(0x111111);
 
 const camera = new THREE.PerspectiveCamera(
