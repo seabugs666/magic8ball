@@ -203,22 +203,35 @@ function triggerSpin() {
         }
     });
 
+    // Initial slow ramp-up
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 8,
-        duration: 0.2,
-        ease: 'power4.in',
+        x: die.rotation.x + Math.PI * 4,  // Start with a smaller rotation
+        duration: 0.15,
+        ease: 'sine.in',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     });
+    
+    // Rapid acceleration phase
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 12,
+        x: die.rotation.x + Math.PI * 16,  // Fast spin
+        duration: 0.3,
+        ease: 'power2.inOut',
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
+    }, '-=0.1');
+    
+    // Gradual slow down
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 10,
         duration: 0.4,
         ease: 'sine.out',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
-    }, '-=0.05');
+    }, '-=0.1');
+    
+    // Final settle with bounce
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 6,
+        x: die.rotation.x + Math.PI * 4,
         duration: 0.6,
-        ease: 'elastic.out(1, 0.5)',
+        ease: 'elastic.out(1, 0.7)',  // More pronounced bounce
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.1');
 }
