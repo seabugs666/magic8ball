@@ -39,6 +39,12 @@ controls.zoomSpeed = 1.5;
 controls.minDistance = 2;
 controls.maxDistance = 10;
 
+// Lock horizontal rotation (Y-axis) and allow full up/down rotation
+controls.minAzimuthAngle = 0;
+controls.maxAzimuthAngle = 0;
+controls.minPolarAngle = 0; // look straight up
+controls.maxPolarAngle = Math.PI; // look straight down
+
 // Configure touch controls for mobile
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
