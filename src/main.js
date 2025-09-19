@@ -25,48 +25,72 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.domElement.style.touchAction = 'none';
 
 // === Controls ===
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
+controls.screenSpacePanning = false;
 controls.enablePan = false;
 controls.enableZoom = true;
 controls.enableRotate = true;
 controls.rotateSpeed = 0.5;
 controls.zoomSpeed = 1.5;
-// Lock horizontal rotation, allow up/down only
+controls.minDistance = 2;
+controls.maxDistance = 10;
+
+// Lock horizontal rotation (Y-axis) and allow full up/down rotation
 controls.minAzimuthAngle = 0;
 controls.maxAzimuthAngle = 0;
-controls.minPolarAngle = 0;
-controls.maxPolarAngle = Math.PI;
+controls.minPolarAngle = 0; // look straight up
+controls.maxPolarAngle = Math.PI; // look straight down
 
-// Touch config for mobile
-controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+// Configure touch controls for mobile
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN
+};
 
-// Prevent multi-touch scroll
-const preventDefault = (e) => { if(e.touches.length > 1) e.preventDefault(); };
-renderer.domElement.addEventListener('touchstart', preventDefault, { passive: false });
-renderer.domElement.addEventListener('touchmove', preventDefault, { passive: false });
+// Disable touch-action on the renderer to prevent browser gestures
+renderer.domElement.style.touchAction = 'none';
 
-/// Stronger main light to actually illuminate the ball
-const dirLight1 = new THREE.DirectionalLight(0xffffff, 3.0);
-dirLight1.position.set(5, 10, 7);
-scene.add(dirLight1);
+// Enable passive event listeners for better performance
+const passiveSupported = (() => {
+    let passiveSupported = false;
+    try {
+        const options = Object.defineProperty({}, 'passive', {
+            get: function() { passiveSupported = true; }
+        });
+        window.addEventListener('test', null, options);
+        window.removeEventListener('test', null, options);
+    } catch (err) {}
+    return passiveSupported;
+})();
 
-// Slightly brighter rim lights
-const rim1 = new THREE.DirectionalLight(0xffffff, 1.2);
-rim1.position.set(-5, 5, -5);
-scene.add(rim1);
+// Prevent default touch events to avoid page scrolling/zooming
+const preventDefault = (e) => {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+};
 
-const rim2 = new THREE.PointLight(0x88ccff, 0.8, 15); // increase intensity
-rim2.position.set(2, 4, 2);
-scene.add(rim2);
-gsap.to(rim2.position, { x: "+=0.3", y: "+=0.3", z: "+=0.3", duration: 2, yoyo:true, repeat:-1, ease:"sine.inOut" });
+// Add touch event listeners
+if ('ontouchstart' in window) {
+    renderer.domElement.addEventListener('touchstart', preventDefault, passiveSupported ? { passive: false } : false);
+    renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
+}
 
-// Subtle ambient to lift shadows, but not too much
-scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+// === Ambient Light ===
+// Very soft ambient to keep the scene from being completely dark
+scene.add(new THREE.AmbientLight(0xffffff, 5.85));
+
+const color = 0xFFFFFF;
+const intensity = 1;
+const light = new THREE.DirectionalLight( color, intensity );
+light.position.set( 0, 10, 0 );
+light.target.position.set( - 5, 0, 0 );
+scene.add( light );
+scene.add( light.target );
 
 // === Load Magic 8-Ball ===
 let die = null;
@@ -75,24 +99,36 @@ let mixer = null;
 let actions = [];
 
 const loader = new GLTFLoader();
+const modelPath = 'assets/magic8ball.glb';
+console.log('Loading GLB file from:', modelPath);
+
 loader.load(
-    'assets/magic8ball.glb',
+    modelPath,
     (gltf) => {
+        console.log('GLB loaded successfully:', gltf);
         ballParent = gltf.scene;
         scene.add(ballParent);
 
-        die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die') || ballParent;
-        die.visible = false;
+        // Find die and hide it
+        die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die');
+        if (!die) {
+            ballParent.traverse((child) => {
+                if (child.isMesh && !die) die = child;
+            });
+        }
+        if (die) die.visible = false;
+        if (!die) die = ballParent; // fallback
 
+        // Enhance glass material
         const glass = ballParent.getObjectByName('Glass');
-        if(glass){
+        if (glass) {
             glass.material = new THREE.MeshPhysicalMaterial({
                 color: 0x88aadd,
                 transparent: true,
-                opacity: 0.5,
+                opacity: .5,
                 transmission: 1.0,
                 roughness: 0.05,
-                metalness: 0,
+                metalness: 0.0,
                 clearcoat: 0.3,
                 clearcoatRoughness: 0.2,
                 ior: 1.33,
@@ -105,132 +141,213 @@ loader.load(
             });
         }
 
+        // Enhance murky dark blue liquid
         const liquid = ballParent.getObjectByName('Liquid');
-        if(liquid){
+        if (liquid) {
             liquid.material = new THREE.MeshPhysicalMaterial({
-                color: 0x001133,
+                color: 0x001133,       // Dark, mysterious blue
                 transparent: true,
-                opacity: 1,
-                transmission: 0.2,
-                roughness: 0.2,
-                metalness: 0,
+                opacity: 1,         // Almost opaque
+                transmission: 0.2,     // Very little light passes through
+                roughness: 0.2,        // Slightly soft surface
+                metalness: 0.0,
                 clearcoat: 0.2,
                 clearcoatRoughness: 0.3,
-                ior: 1.3,
-                thickness: 1.0,
+                ior: 1.3,              // Slight refraction
+                thickness: 1.0,        // Full depth for murkiness
                 specularIntensity: 0.6,
-                envMapIntensity: 0.5,
+                envMapIntensity: 0.5,  // Subtle reflections
                 side: THREE.DoubleSide,
                 premultipliedAlpha: true,
             });
         }
 
-        if(gltf.animations.length){
+
+
+        // === Animations ===
+        if (gltf.animations && gltf.animations.length) {
             mixer = new THREE.AnimationMixer(ballParent);
-            gltf.animations.forEach(clip => actions.push(mixer.clipAction(clip)));
+            gltf.animations.forEach((clip) => {
+                const action = mixer.clipAction(clip);
+                actions.push(action);
+            });
+            console.log('🎬 Found', gltf.animations.length, 'animation clips');
         }
 
         const loading = document.getElementById('loading');
-        if(loading) loading.style.display = 'none';
+        if (loading) loading.style.display = 'none';
+        console.log('Magic 8-Ball loaded.');
     },
-    (progress) => { if(progress.total) console.log(`Loading: ${((progress.loaded/progress.total)*100).toFixed(2)}%`); },
-    (err) => console.error('Error loading GLB:', err)
+    (progress) => {
+        if (progress.total)
+            console.log(
+                'Loading progress:',
+                ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
+            );
+    },
+    (err) => console.error('Error loading model:', err)
 );
 
-// === Helpers ===
-function shakeObject(object, intensity=0.01, duration=0.2){
-    if(!object) return;
-    const orig = object.position.clone();
-    const interval = setInterval(() => {
-        object.position.x = orig.x + (Math.random()-0.5)*intensity;
-        object.position.y = orig.y + (Math.random()-0.5)*intensity;
-    },16);
-    setTimeout(()=>{ clearInterval(interval); object.position.copy(orig); }, duration*1000);
+// === Animation Helpers ===
+function shakeObject(object, intensity = 0.01, duration = 0.2) {
+    if (!object) return;
+    const originalPosition = object.position.clone();
+    const shakeInterval = setInterval(() => {
+        object.position.x = originalPosition.x + (Math.random() - 0.5) * intensity;
+        object.position.y = originalPosition.y + (Math.random() - 0.5) * intensity;
+    }, 16);
+
+    setTimeout(() => {
+        clearInterval(shakeInterval);
+        object.position.copy(originalPosition);
+    }, duration * 1000);
 }
 
-// Spin function
+// === Spin Function ===
 let isAnimating = false;
-function triggerSpin(){
-    if(!die || isAnimating) return;
+function triggerSpin() {
+    if (!die || isAnimating) return;
     isAnimating = true;
-    if(ballParent) shakeObject(ballParent,0.03,0.3);
 
-    const tl = gsap.timeline({onComplete: ()=>{
-            if(actions.length){
-                const action = actions[Math.floor(Math.random()*actions.length)];
+    if (ballParent) shakeObject(ballParent, 0.03, 0.3);
+
+    const tl = gsap.timeline({
+        onComplete() {
+            if (actions.length) {
+                actions.forEach((a) => a.stop());
+                const action = actions[Math.floor(Math.random() * actions.length)];
                 action.reset();
-                action.setLoop(THREE.LoopOnce,1);
-                action.clampWhenFinished=true;
-                action.timeScale=0.7;
+                action.setLoop(THREE.LoopOnce, 1); // Play through once
+                action.clampWhenFinished = true;
+                action.timeScale = 0.7; // Slightly faster playback
+                action.setEffectiveTimeScale(1.5); // Speed up the animation
+                action.setEffectiveWeight(1.0); // Full influence
                 action.play();
-            }
-            isAnimating=false;
-        }});
 
-    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*4, duration:0.15, ease:'sine.in', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) });
-    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*16, duration:0.3, ease:'power2.inOut', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
-    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*10, duration:0.4, ease:'sine.out', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
-    tl.to(die.rotation,{ x: die.rotation.x+Math.PI*4, duration:0.6, ease:'elastic.out(1,0.7)', onUpdate:()=>die.quaternion.setFromEuler(die.rotation) },'-=0.1');
+                // Add some variation to the animation
+                const randomSpeed = 0.8 + Math.random() * 0.4; // Random speed between 0.8 and 1.2
+                action.setDuration(action.getClip().duration * randomSpeed);
+            }
+            isAnimating = false;
+        }
+    });
+
+    // Initial slow ramp-up
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 4,  // Start with a smaller rotation
+        duration: 0.15,
+        ease: 'sine.in',
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
+    });
+
+    // Rapid acceleration phase
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 16,  // Fast spin
+        duration: 0.3,
+        ease: 'power2.inOut',
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
+    }, '-=0.1');
+
+    // Gradual slow down
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 10,
+        duration: 0.4,
+        ease: 'sine.out',
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
+    }, '-=0.1');
+
+    // Final settle with bounce
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 4,
+        duration: 0.6,
+        ease: 'elastic.out(1, 0.7)',  // More pronounced bounce
+        onUpdate: () => die.quaternion.setFromEuler(die.rotation)
+    }, '-=0.1');
 }
 
 // === Event Listeners ===
-renderer.domElement.addEventListener('dblclick', e=>{ if(e.pointerType!=='touch') triggerSpin(); });
-
-let touchStartTime=0, lastInteractionTime=0;
-const interactionCooldown=1000, tapTimeThreshold=300;
-let touchStartX=0, touchStartY=0, touchMoved=false;
-
-function triggerHaptic(){ if('vibrate' in navigator) navigator.vibrate(50); }
-function triggerVisual(){ if(ballParent) gsap.to(ballParent.scale,{ x:1.05,y:1.05,z:1.05,duration:0.1,yoyo:true,repeat:1,ease:'power2.inOut' }); }
-
-renderer.domElement.addEventListener('touchstart', e=>{
-    if(e.touches.length===1){
-        touchStartTime=Date.now();
-        touchStartX=e.touches[0].clientX;
-        touchStartY=e.touches[0].clientY;
-        touchMoved=false;
-    }
-},{ passive:true });
-
-renderer.domElement.addEventListener('touchmove', e=>{
-    if(e.touches.length===1){
-        const dx=Math.abs(e.touches[0].clientX-touchStartX);
-        const dy=Math.abs(e.touches[0].clientY-touchStartY);
-        if(dx>10||dy>10) touchMoved=true;
-    }
-},{ passive:true });
-
-renderer.domElement.addEventListener('touchend', ()=>{
-    const now = Date.now();
-    if(!touchMoved&&(now-touchStartTime)<tapTimeThreshold&&(now-lastInteractionTime)>=interactionCooldown){
-        triggerHaptic();
-        triggerVisual();
+// Desktop - only trigger on double-click
+renderer.domElement.addEventListener('dblclick', (e) => {
+    if (e.pointerType !== 'touch') {
         triggerSpin();
-        lastInteractionTime=now;
     }
-    touchMoved=false;
+});
+
+// Mobile touch controls
+let touchStartTime = 0;
+let lastInteractionTime = 0;
+const interactionCooldown = 1000;
+const tapTimeThreshold = 300;
+
+function triggerHapticFeedback() {
+    if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+    }
+}
+
+function triggerVisualFeedback() {
+    if (!ballParent) return;
+    gsap.to(ballParent.scale, {
+        x: 1.05, y: 1.05, z: 1.05,
+        duration: 0.1,
+        yoyo: true,
+        repeat: 1,
+        ease: 'power2.inOut'
+    });
+}
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+const moveThreshold = 10;
+
+renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        touchStartTime = Date.now();
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchMoved = false;
+    }
+}, { passive: true });
+
+renderer.domElement.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchStartX);
+        const dy = Math.abs(touch.clientY - touchStartY);
+        if (dx > moveThreshold || dy > moveThreshold) {
+            touchMoved = true;
+        }
+    }
+}, { passive: true });
+
+renderer.domElement.addEventListener('touchend', () => {
+    const now = Date.now();
+    if (!touchMoved && (now - touchStartTime) < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
+        triggerHapticFeedback();
+        triggerVisualFeedback();
+        triggerSpin();
+        lastInteractionTime = now;
+    }
+    touchMoved = false;
 });
 
 // === Resize ===
-window.addEventListener('resize', ()=>{
-    camera.aspect=window.innerWidth/window.innerHeight;
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // === Animate loop ===
 const clock = new THREE.Clock();
-function animate(){
+function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
-    if(mixer) mixer.update(delta);
+    if (mixer) mixer.update(delta);
     controls.update();
-    if(ballParent && keyLight) {
-        keyLight.position.copy(camera.position);
-        keyLight.target.position.copy(ballParent.position);
-    }
-    renderer.render(scene,camera);
+    renderer.render(scene, camera);
 }
 animate();
 
-console.log('🎱 Magic 8-Ball ready!');
+console.log('🎱 Magic 8-Ball ready: double-click (desktop) or tap (mobile)');
