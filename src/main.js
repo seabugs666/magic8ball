@@ -30,6 +30,20 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+controls.enablePan = false;
+controls.enableZoom = true;
+controls.enableRotate = true;
+controls.rotateSpeed = 0.5;
+controls.touches = {
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN
+};
+controls.minDistance = 2;
+controls.maxDistance = 10;
+controls.minPolarAngle = 0;
+controls.maxPolarAngle = Math.PI;
+controls.minAzimuthAngle = 0;
+controls.maxAzimuthAngle = 0;
 
 // === Lights ===
 scene.add(new THREE.AmbientLight(0xffffff, 5.0));
@@ -57,21 +71,18 @@ loader.load(
     modelPath,
     (gltf) => {
         die = gltf.scene;
-        die.visible = false; // Hide the die initially
-        console.log('GLB loaded successfully:', gltf);
+        die.visible = false;
         ballParent = gltf.scene;
         scene.add(ballParent);
 
-        // Find die
         die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die');
         if (!die) {
             ballParent.traverse((child) => {
                 if (child.isMesh && !die) die = child;
             });
         }
-        if (!die) die = ballParent; // fallback
+        if (!die) die = ballParent;
 
-        // Enhance glass material
         const glass = ballParent.getObjectByName('Glass');
         if (glass) {
             glass.material = new THREE.MeshPhysicalMaterial({
@@ -93,27 +104,19 @@ loader.load(
             });
         }
 
-        // === Animations ===
         if (gltf.animations && gltf.animations.length) {
             mixer = new THREE.AnimationMixer(ballParent);
             gltf.animations.forEach((clip) => {
                 const action = mixer.clipAction(clip);
                 actions.push(action);
             });
-            console.log('🎬 Found', gltf.animations.length, 'animation clips');
         }
 
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
         console.log('Magic 8-Ball loaded.');
     },
-    (progress) => {
-        if (progress.total)
-            console.log(
-                'Loading progress:',
-                ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
-            );
-    },
+    undefined,
     (err) => console.error('Error loading model:', err)
 );
 
@@ -140,9 +143,6 @@ function triggerSpin() {
 
     if (ballParent) shakeObject(ballParent, 0.03, 0.3);
 
-    // Remove unused quaternion variables since we're using rotation directly
-    
-    // Create a timeline for more control over the animation
     const tl = gsap.timeline({
         onComplete() {
             if (actions.length) {
@@ -157,79 +157,38 @@ function triggerSpin() {
             isAnimating = false;
         }
     });
-    
-    // First phase: Fast ramp-up
+
     tl.to(die.rotation, {
         x: die.rotation.x + Math.PI * 2,
         duration: 0.3,
         ease: 'power1.in',
         onUpdate: () => {
-            // Keep the ball rotating around its center
             die.quaternion.setFromEuler(die.rotation);
         }
     });
-    
-    // Second phase: Slow down and settle
+
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 4, // Additional rotation
+        x: die.rotation.x + Math.PI * 4,
         duration: 0.8,
-        ease: 'back.out(1.2)', // Slight bounce at the end
+        ease: 'back.out(1.2)',
         onUpdate: () => {
             die.quaternion.setFromEuler(die.rotation);
         }
-    }, '-=0.1'); // Overlap slightly with previous tween
+    }, '-=0.1');
 }
 
-// Configure orbit controls for up-down rotation and zoom
-controls.enablePan = false;  // Disable panning
-controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
-controls.enableRotate = true; // Enable rotation
-controls.enableDamping = true;
-controls.dampingFactor = 0.1;
-controls.rotateSpeed = 0.5;
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN
-};
-
-// Set up zoom constraints
-controls.minDistance = 2;  // Minimum zoom distance
-controls.maxDistance = 10; // Maximum zoom distance
-
-// Set up rotation constraints for up-down rotation only (around X-axis)
-controls.minPolarAngle = 0; // Allow looking all the way up
-controls.maxPolarAngle = Math.PI; // Allow looking all the way down
-controls.minAzimuthAngle = 0; // Prevent horizontal rotation
-controls.maxAzimuthAngle = 0; // Prevent horizontal rotation
-
-// Set up touch controls
-controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,  // Single finger for up-down rotation
-    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for pinch-to-zoom
-};
-
-// Lock to Y-axis rotation only (up-down)
+// === Override Controls Update ===
 const originalUpdate = controls.update;
-controls.update = function() {
+controls.update = function () {
     originalUpdate.call(this);
-    
+
     if (!ballParent) return;
-    
-    // Get the camera's up vector
-    const up = new THREE.Vector3(0, 1, 0);
-    
-    // Make camera look at the ball, but only allow up/down movement
-    camera.lookAt(ballParent.position);
-    
-    // Lock camera's up vector to prevent tilting
-    camera.up.copy(up);
-    
-    // Force camera to maintain distance from ball
-    const distance = 5; // Adjust this value as needed
-    camera.position.sub(controls.target);
-    camera.position.setLength(distance);
-    camera.position.add(ballParent.position);
+
+    // Keep target locked to ball center
     controls.target.copy(ballParent.position);
+
+    // Lock camera up vector (prevent tilt)
+    camera.up.set(0, 1, 0);
 };
 
 // === Desktop double-click ===
@@ -238,25 +197,21 @@ renderer.domElement.addEventListener('dblclick', triggerSpin);
 // === Mobile Interactions ===
 let touchStartTime = 0;
 let lastInteractionTime = 0;
-const interactionCooldown = 1000; // ms
-const tapTimeThreshold = 300; // ms
+const interactionCooldown = 1000;
+const tapTimeThreshold = 300;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+const moveThreshold = 10;
 
-// Haptic feedback helper
 function triggerHapticFeedback() {
     if ('vibrate' in navigator) {
-        navigator.vibrate = navigator.vibrate || 
-                           navigator.webkitVibrate || 
-                           navigator.mozVibrate || 
-                           navigator.msVibrate;
-        navigator.vibrate(50); // 50ms vibration
+        navigator.vibrate(50);
     }
 }
 
-// Visual feedback helper
 function triggerVisualFeedback() {
     if (!ballParent) return;
-    
-    // Add a subtle scale effect
     gsap.to(ballParent.scale, {
         x: 1.05,
         y: 1.05,
@@ -268,29 +223,21 @@ function triggerVisualFeedback() {
     });
 }
 
-// Touch state tracking
-let touchStartX = 0;
-let touchStartY = 0;
-let touchMoved = false;
-const moveThreshold = 10; // pixels of movement allowed before considering it a swipe
-
-// Touch start handler
+// Touch start
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
-        // Single touch - handle rotation/tap
         touchStartTime = Date.now();
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchMoved = false;
-        e.preventDefault(); // block scroll for single touch
+        e.preventDefault(); // block scroll for single finger
     } else if (e.touches.length === 2) {
-        // Two touches - let OrbitControls handle pinch zoom
+        // Let OrbitControls handle pinch zoom
         touchMoved = true;
-        // no preventDefault here
     }
 }, { passive: false });
 
-// Touch move handler
+// Touch move
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
         const touch = e.touches[0];
@@ -300,29 +247,23 @@ renderer.domElement.addEventListener('touchmove', (e) => {
             touchMoved = true;
         }
     }
-    // don’t preventDefault — OrbitControls needs pinch events
+    // OrbitControls handles pinch zoom
 }, { passive: false });
 
-
-// Touch end handler
+// Touch end
 renderer.domElement.addEventListener('touchend', () => {
     const now = Date.now();
-    
-    // Only trigger if it was a quick tap (not a swipe) and not during cooldown
     if (!touchMoved && (now - touchStartTime) < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
         triggerHapticFeedback();
         triggerVisualFeedback();
         triggerSpin();
         lastInteractionTime = now;
     }
-    
-    // Reset touch state
     touchMoved = false;
 });
 
-// Click handler for desktop
+// Desktop click
 document.addEventListener('click', (e) => {
-    // Only handle if not from touch events (to prevent double-trigger on mobile)
     if (e.pointerType !== 'touch') {
         const now = Date.now();
         if ((now - lastInteractionTime) >= interactionCooldown) {
@@ -345,13 +286,11 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
-
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
-
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
 
-console.log('🎱 Magic 8-Ball ready: double-click (desktop) or swipe hard (mobile)');
+console.log('🎱 Magic 8-Ball ready: double-click (desktop) or tap (mobile)');
