@@ -116,18 +116,6 @@ loader.load(
 );
 
 // === Animation Helpers ===
-function randomQuaternion() {
-    const q = new THREE.Quaternion();
-    q.setFromEuler(
-        new THREE.Euler(
-            Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2
-        )
-    );
-    return q;
-}
-
 function shakeObject(object, intensity = 0.01, duration = 0.2) {
     if (!object) return;
     const originalPosition = object.position.clone();
@@ -150,17 +138,10 @@ function triggerSpin() {
 
     if (ballParent) shakeObject(ballParent, 0.03, 0.3);
 
-    const startQuat = die.quaternion.clone();
-    const rollQuat = randomQuaternion();
-    gsap.to({ t: 0 }, {
-        t: 1,
-        duration: 0.6,
-        ease: 'power2.inOut',
-        onUpdate() {
-            const currentQuat = new THREE.Quaternion();
-            currentQuat.slerpQuaternions(startQuat, rollQuat, this.t);
-            die.quaternion.copy(currentQuat);
-        },
+    // Remove unused quaternion variables since we're using rotation directly
+    
+    // Create a timeline for more control over the animation
+    const tl = gsap.timeline({
         onComplete() {
             if (actions.length) {
                 actions.forEach((a) => a.stop());
@@ -172,8 +153,29 @@ function triggerSpin() {
                 action.play();
             }
             isAnimating = false;
-        },
+        }
     });
+    
+    // First phase: Fast ramp-up
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 2,
+        duration: 0.3,
+        ease: 'power1.in',
+        onUpdate: () => {
+            // Keep the ball rotating around its center
+            die.quaternion.setFromEuler(die.rotation);
+        }
+    });
+    
+    // Second phase: Slow down and settle
+    tl.to(die.rotation, {
+        x: die.rotation.x + Math.PI * 4, // Additional rotation
+        duration: 0.8,
+        ease: 'back.out(1.2)', // Slight bounce at the end
+        onUpdate: () => {
+            die.quaternion.setFromEuler(die.rotation);
+        }
+    }, '-=0.1'); // Overlap slightly with previous tween
 }
 
 // Configure orbit controls for up-down rotation and zoom
@@ -269,18 +271,23 @@ const moveThreshold = 10; // pixels of movement allowed before considering it a 
 // Touch start handler
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
+        // Single touch - handle rotation/tap
         touchStartTime = Date.now();
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchMoved = false;
-        e.preventDefault();
+    } else if (e.touches.length === 2) {
+        // Two touches - handle pinch zoom
+        // Let OrbitControls handle the zoom, just mark as moved
+        touchMoved = true;
     }
+    e.preventDefault();
 }, { passive: false });
 
 // Touch move handler
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
-        // Check if touch moved beyond threshold
+        // Single touch - check for swipe
         const touch = e.touches[0];
         const dx = Math.abs(touch.clientX - touchStartX);
         const dy = Math.abs(touch.clientY - touchStartY);
@@ -288,26 +295,29 @@ renderer.domElement.addEventListener('touchmove', (e) => {
         if (dx > moveThreshold || dy > moveThreshold) {
             touchMoved = true;
         }
-        e.preventDefault();
+    } else if (e.touches.length === 2) {
+        // Two touches - handle pinch zoom
+        // Let OrbitControls handle the zoom
+        touchMoved = true; // Prevent tap detection after pinch
     }
+    e.preventDefault();
 }, { passive: false });
 
 // Touch end handler
-renderer.domElement.addEventListener('touchend', (e) => {
+renderer.domElement.addEventListener('touchend', () => {
     const now = Date.now();
-    const dt = now - touchStartTime;
     
     // Only trigger if it was a quick tap (not a swipe) and not during cooldown
-    if (!touchMoved && dt < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
+    if (!touchMoved && (now - touchStartTime) < tapTimeThreshold && (now - lastInteractionTime) >= interactionCooldown) {
         triggerHapticFeedback();
         triggerVisualFeedback();
         triggerSpin();
         lastInteractionTime = now;
     }
     
+    // Reset touch state
     touchMoved = false;
-    e.preventDefault();
-}, { passive: false });
+});
 
 // Click handler for desktop
 document.addEventListener('click', (e) => {
