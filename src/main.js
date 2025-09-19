@@ -179,7 +179,7 @@ function triggerSpin() {
 // Configure orbit controls
 controls.enablePan = false;  // Disable panning
 controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
-controls.enableRotate = true; // Enabl esrotation
+controls.enableRotate = true; // Enabl srotation
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate
     TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom and pan
