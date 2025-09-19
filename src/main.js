@@ -87,7 +87,7 @@ if ('ontouchstart' in window) {
 
 // === Ambient Light ===
 // Very soft ambient to keep the scene from being completely dark
-scene.add(new THREE.AmbientLight(0xffffff, 5.85));
+scene.add(new THREE.AmbientLight(0xffffff, 4));
 
 const color = 0xFFFFFF;
 const intensity = 1;
