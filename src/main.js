@@ -147,7 +147,7 @@ loader.load(
             liquid.material = new THREE.MeshPhysicalMaterial({
                 color: 0x001133,       // Dark, mysterious blue
                 transparent: true,
-                opacity: 0.85,         // Almost opaque
+                opacity: 1,         // Almost opaque
                 transmission: 0.2,     // Very little light passes through
                 roughness: 0.2,        // Slightly soft surface
                 metalness: 0.0,
