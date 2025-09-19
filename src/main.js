@@ -32,7 +32,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
 // === Lights ===
-scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+scene.add(new THREE.AmbientLight(0xffffff, 5.0));
 const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight1.position.set(5, 10, 7);
 scene.add(dirLight1);
