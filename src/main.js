@@ -148,10 +148,6 @@ loader.load('assets/magic8ball.glb',
             gltf.animations.forEach((clip) => { actions.push(mixer.clipAction(clip)); });
         }
 
-        const loading = document.getElementById('loading');
-        if (loading) loading.style.display = 'none';
-        console.log('Magic 8-Ball loaded.');
-
     },
     (progress) => { if (progress.total) console.log('Loading progress:', ((progress.loaded / progress.total) * 100).toFixed(2) + '%'); },
     (err) => console.error('Error loading model:', err)
