@@ -179,38 +179,110 @@ function triggerSpin() {
 // === Desktop double-click ===
 renderer.domElement.addEventListener('dblclick', triggerSpin);
 
-// === Mobile hard swipe ===
+// === Mobile Interactions ===
 let touchStartPos = null;
-let swipeThreshold = 100; // minimum distance in pixels
-let swipeSpeedThreshold = .5; // px/ms
-let lastSwipeTime = 0;
-let swipeCooldown = 1000; // ms
+let touchStartTime = 0;
+let lastInteractionTime = 0;
+const interactionCooldown = 1000; // ms
+const tapThreshold = 5; // pixels
+const tapTimeThreshold = 300; // ms
+const swipeThreshold = 50; // reduced from 100px
+const swipeSpeedThreshold = 0.3; // reduced from 0.5 px/ms
 
+// Haptic feedback helper
+function triggerHapticFeedback() {
+    if ('vibrate' in navigator) {
+        navigator.vibrate = navigator.vibrate || 
+                           navigator.webkitVibrate || 
+                           navigator.mozVibrate || 
+                           navigator.msVibrate;
+        navigator.vibrate(50); // 50ms vibration
+    }
+}
+
+// Visual feedback helper
+function triggerVisualFeedback() {
+    if (!ballParent) return;
+    
+    // Add a subtle scale effect
+    gsap.to(ballParent.scale, {
+        x: 1.05,
+        y: 1.05,
+        z: 1.05,
+        duration: 0.1,
+        yoyo: true,
+        repeat: 1,
+        ease: 'power2.inOut'
+    });
+}
+
+// Touch start handler
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
-    touchStartPos = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    touchStartPos = { x: touch.clientX, y: touch.clientY };
+    touchStartTime = Date.now();
 }, { passive: true });
 
-renderer.domElement.addEventListener('touchend', (e) => {
+// Touch move handler (for preventing scrolling during swipe)
+renderer.domElement.addEventListener('touchmove', (e) => {
     if (!touchStartPos) return;
+    
+    // Prevent scrolling if we're moving enough to be considered a swipe
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchStartPos.x;
+        const dy = touch.clientY - touchStartPos.y;
+        
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+            e.preventDefault();
+        }
+    }
+}, { passive: false });
+
+// Touch end handler
+renderer.domElement.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (!touchStartPos || now - lastInteractionTime < interactionCooldown) {
+        touchStartPos = null;
+        return;
+    }
 
     const touch = e.changedTouches[0];
     const dx = touch.clientX - touchStartPos.x;
     const dy = touch.clientY - touchStartPos.y;
-    const dt = Date.now() - touchStartPos.time;
-
+    const dt = now - touchStartTime;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const speed = distance / dt; // px/ms
-    const now = Date.now();
+    const speed = distance / Math.max(dt, 1); // prevent division by zero
 
-    if (distance > swipeThreshold && speed > swipeSpeedThreshold && now - lastSwipeTime > swipeCooldown) {
-        lastSwipeTime = now;
+    // Check for tap
+    if (distance < tapThreshold && dt < tapTimeThreshold) {
+        triggerHapticFeedback();
+        triggerVisualFeedback();
         triggerSpin();
+        lastInteractionTime = now;
+    }
+    // Check for swipe
+    else if (distance > swipeThreshold && speed > swipeSpeedThreshold) {
+        triggerHapticFeedback();
+        triggerSpin();
+        lastInteractionTime = now;
     }
 
     touchStartPos = null;
 }, { passive: true });
+
+// Also make the ball respond to clicks for accessibility
+document.addEventListener('click', () => {
+    if (window.innerWidth >= 768) return; // Only on mobile
+    const now = Date.now();
+    if (now - lastInteractionTime >= interactionCooldown) {
+        triggerHapticFeedback();
+        triggerVisualFeedback();
+        triggerSpin();
+        lastInteractionTime = now;
+    }
+});
 
 // === Resize ===
 window.addEventListener('resize', () => {
