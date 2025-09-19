@@ -79,7 +79,6 @@ if ('ontouchstart' in window) {
     renderer.domElement.addEventListener('touchstart', preventDefault, passiveSupported ? { passive: false } : false);
     renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
 }
-
 // === Remove previous lights ===
 scene.children = scene.children.filter(obj => !(obj.isLight));
 
@@ -125,7 +124,7 @@ sparklePositions.forEach(pos => {
         x: "+=0.3",
         y: "+=0.3",
         z: "+=0.3",
-        duration: 2 + Math.random()*1,
+        duration: 2 + Math.random(),
         yoyo: true,
         repeat: -1,
         ease: "sine.inOut"
@@ -153,7 +152,6 @@ if (liquid) {
         premultipliedAlpha: true
     });
 }
-
 
 // === Load Magic 8-Ball ===
 let die = null;
