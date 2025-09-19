@@ -60,13 +60,14 @@ loader.load(
         ballParent = gltf.scene;
         scene.add(ballParent);
 
-        // Find die
+        // Find die and hide it
         die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die');
         if (!die) {
             ballParent.traverse((child) => {
                 if (child.isMesh && !die) die = child;
             });
         }
+        if (die) die.visible = false;
         if (!die) die = ballParent; // fallback
 
         // Enhance glass material
@@ -185,16 +186,18 @@ controls.enableRotate = true; // Enable rotation
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
+controls.zoomSpeed = 0.5;
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN
 };
-controls.screenSpacePanning = false; // Important for mobile zoom
+controls.screenSpacePanning = true; // Changed to true for better mobile zoom
 controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN
 };
+controls.touchAction = 'pan-y'; // Important for mobile zoom
 
 // Set up zoom constraints
 controls.minDistance = 2;  // Minimum zoom distance
