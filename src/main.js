@@ -38,7 +38,7 @@ controls.zoomSpeed = 1.5;
 controls.minDistance = 2;
 controls.maxDistance = 10;
 
-// 🔑 Fix pinch zoom (mobile) — use standard OrbitControls touch mapping
+// 🔑 Fix pinch zoom (mobile) — clean, standard mapping
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY
