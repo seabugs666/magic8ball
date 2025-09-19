@@ -29,7 +29,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 // === Controls ===
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
+controls.dampingFactor = 0.1;
+controls.screenSpacePanning = false;
 controls.enablePan = false;
 controls.enableZoom = true;
 controls.enableRotate = true;
@@ -38,11 +39,40 @@ controls.zoomSpeed = 1.5;
 controls.minDistance = 2;
 controls.maxDistance = 10;
 
-// 🔑 Fix pinch zoom (mobile) — clean, standard mapping
+// Configure touch controls for mobile
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY
+    TWO: THREE.TOUCH.DOLLY_PAN
 };
+
+// Disable touch-action on the renderer to prevent browser gestures
+renderer.domElement.style.touchAction = 'none';
+
+// Enable passive event listeners for better performance
+const passiveSupported = (() => {
+    let passiveSupported = false;
+    try {
+        const options = Object.defineProperty({}, 'passive', {
+            get: function() { passiveSupported = true; }
+        });
+        window.addEventListener('test', null, options);
+        window.removeEventListener('test', null, options);
+    } catch (err) {}
+    return passiveSupported;
+})();
+
+// Prevent default touch events to avoid page scrolling/zooming
+const preventDefault = (e) => {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+};
+
+// Add touch event listeners
+if ('ontouchstart' in window) {
+    renderer.domElement.addEventListener('touchstart', preventDefault, passiveSupported ? { passive: false } : false);
+    renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
+}
 
 // === Lights ===
 scene.add(new THREE.AmbientLight(0xffffff, 5.0));
@@ -187,10 +217,15 @@ function triggerSpin() {
     }, '-=0.1');
 }
 
-// === Desktop double-click ===
-renderer.domElement.addEventListener('dblclick', triggerSpin);
+// === Event Listeners ===
+// Desktop - only trigger on double-click
+renderer.domElement.addEventListener('dblclick', (e) => {
+    if (e.pointerType !== 'touch') {
+        triggerSpin();
+    }
+});
 
-// === Mobile Interactions ===
+// Mobile touch controls
 let touchStartTime = 0;
 let lastInteractionTime = 0;
 const interactionCooldown = 1000;
@@ -247,18 +282,6 @@ renderer.domElement.addEventListener('touchend', () => {
         lastInteractionTime = now;
     }
     touchMoved = false;
-});
-
-document.addEventListener('click', (e) => {
-    if (e.pointerType !== 'touch') {
-        const now = Date.now();
-        if ((now - lastInteractionTime) >= interactionCooldown) {
-            triggerHapticFeedback();
-            triggerVisualFeedback();
-            triggerSpin();
-            lastInteractionTime = now;
-        }
-    }
 });
 
 // === Resize ===
