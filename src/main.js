@@ -282,29 +282,27 @@ renderer.domElement.addEventListener('touchstart', (e) => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchMoved = false;
+        e.preventDefault(); // block scroll for single touch
     } else if (e.touches.length === 2) {
-        // Two touches - handle pinch zoom
-        // Let OrbitControls handle the zoom, just mark as moved
+        // Two touches - let OrbitControls handle pinch zoom
         touchMoved = true;
+        // no preventDefault here
     }
-    e.preventDefault();
 }, { passive: false });
 
 // Touch move handler
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
-        // Single touch - check for swipe
         const touch = e.touches[0];
         const dx = Math.abs(touch.clientX - touchStartX);
         const dy = Math.abs(touch.clientY - touchStartY);
-        
         if (dx > moveThreshold || dy > moveThreshold) {
             touchMoved = true;
         }
     }
-    // Let OrbitControls handle two-finger touch (pinch-to-zoom)
-    // No need to prevent default as OrbitControls will handle it
-}, { passive: true });
+    // don’t preventDefault — OrbitControls needs pinch events
+}, { passive: false });
+
 
 // Touch end handler
 renderer.domElement.addEventListener('touchend', () => {
