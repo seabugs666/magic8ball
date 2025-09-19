@@ -97,10 +97,6 @@ light.target.position.set( - 5, 0, 0 );
 scene.add( light );
 scene.add( light.target );
 
-const purpleLight = new THREE.PointLight(0x9900ff, 0.3, 10, 2);
-purpleLight.position.set(0, 1.5, 0);
-scene.add(purpleLight);
-
 
 // === Load Magic 8-Ball ===
 let die = null;
