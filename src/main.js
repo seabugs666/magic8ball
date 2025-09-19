@@ -20,7 +20,7 @@ camera.lookAt(0, 0, 0);
 const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('canvas'),
     antialias: true,
-    alpha: true,
+    alpha: true
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -42,62 +42,31 @@ controls.maxDistance = 10;
 // Lock horizontal rotation (Y-axis) and allow full up/down rotation
 controls.minAzimuthAngle = 0;
 controls.maxAzimuthAngle = 0;
-controls.minPolarAngle = 0; // look straight up
-controls.maxPolarAngle = Math.PI; // look straight down
+controls.minPolarAngle = 0;
+controls.maxPolarAngle = Math.PI;
 
-// Configure touch controls for mobile
+// Touch settings
 controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN
 };
-
-// Disable touch-action on the renderer to prevent browser gestures
 renderer.domElement.style.touchAction = 'none';
 
-// Enable passive event listeners for better performance
-const passiveSupported = (() => {
-    let passiveSupported = false;
-    try {
-        const options = Object.defineProperty({}, 'passive', {
-            get: function() { passiveSupported = true; }
-        });
-        window.addEventListener('test', null, options);
-        window.removeEventListener('test', null, options);
-    } catch (err) {}
-    return passiveSupported;
-})();
-
-// Prevent default touch events to avoid page scrolling/zooming
-const preventDefault = (e) => {
-    if (e.touches.length > 1) {
-        e.preventDefault();
-    }
-};
-
-// Add touch event listeners
-if ('ontouchstart' in window) {
-    renderer.domElement.addEventListener('touchstart', preventDefault, passiveSupported ? { passive: false } : false);
-    renderer.domElement.addEventListener('touchmove', preventDefault, passiveSupported ? { passive: false } : false);
-}
-// === Remove previous lights ===
-scene.children = scene.children.filter(obj => !(obj.isLight));
-
-// === Soft, glinty setup for glossy sphere ===
-
-// Very subtle ambient
+// === Lights ===
+// Soft ambient
 scene.add(new THREE.AmbientLight(0xffffff, 0.2));
 
-// Main top-left highlight
+// Main highlight
 const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
 mainLight.position.set(5, 8, 5);
 scene.add(mainLight);
 
-// Secondary key from right-top, slightly bluish
+// Fill light, bluish
 const fillLight = new THREE.DirectionalLight(0x4466ff, 1.0);
 fillLight.position.set(-5, 7, 3);
 scene.add(fillLight);
 
-// Rim / edge highlights (wraps the sphere)
+// Rim lights
 const rimLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
 rimLight1.position.set(-6, 3, -5);
 scene.add(rimLight1);
@@ -106,7 +75,7 @@ const rimLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
 rimLight2.position.set(6, 2, -4);
 scene.add(rimLight2);
 
-// Small sparkling point lights around for subtle glitter
+// Sparkles
 const sparklePositions = [
     [2, 4, 2],
     [-2, 3, 3],
@@ -119,7 +88,6 @@ sparklePositions.forEach(pos => {
     p.position.set(...pos);
     scene.add(p);
 
-    // optional gentle animation
     gsap.to(p.position, {
         x: "+=0.3",
         y: "+=0.3",
@@ -131,46 +99,21 @@ sparklePositions.forEach(pos => {
     });
 });
 
-// === Adjust liquid for murky glossy look ===
-const liquid = ballParent.getObjectByName('Liquid');
-if (liquid) {
-    liquid.material = new THREE.MeshPhysicalMaterial({
-        color: 0x001133,
-        transparent: true,
-        opacity: 0.65,
-        transmission: 1.0,
-        roughness: 0.02,        // super smooth for glossy
-        metalness: 0.0,
-        clearcoat: 0.7,
-        clearcoatRoughness: 0.05,
-        ior: 1.33,
-        thickness: 0.9,
-        specularIntensity: 1.2, // strong glints
-        envMapIntensity: 1.5,   // reflections pop
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        premultipliedAlpha: true
-    });
-}
-
-// === Load Magic 8-Ball ===
+// === Variables ===
 let die = null;
 let ballParent = null;
 let mixer = null;
 let actions = [];
 
+// === GLTF Loader ===
 const loader = new GLTFLoader();
-const modelPath = 'assets/magic8ball.glb';
-console.log('Loading GLB file from:', modelPath);
-
 loader.load(
-    modelPath,
+    'assets/magic8ball.glb',
     (gltf) => {
-        console.log('GLB loaded successfully:', gltf);
         ballParent = gltf.scene;
         scene.add(ballParent);
 
-        // Find die and hide it
+        // Find die
         die = ballParent.getObjectByName('Die') || ballParent.getObjectByName('die');
         if (!die) {
             ballParent.traverse((child) => {
@@ -178,15 +121,15 @@ loader.load(
             });
         }
         if (die) die.visible = false;
-        if (!die) die = ballParent; // fallback
+        if (!die) die = ballParent;
 
-        // Enhance glass material
+        // Glass
         const glass = ballParent.getObjectByName('Glass');
         if (glass) {
             glass.material = new THREE.MeshPhysicalMaterial({
                 color: 0x88aadd,
                 transparent: true,
-                opacity: .5,
+                opacity: 0.5,
                 transmission: 1.0,
                 roughness: 0.05,
                 metalness: 0.0,
@@ -202,37 +145,34 @@ loader.load(
             });
         }
 
-        // Enhance murky dark blue liquid
+        // Murky dark blue liquid
         const liquid = ballParent.getObjectByName('Liquid');
         if (liquid) {
             liquid.material = new THREE.MeshPhysicalMaterial({
-                color: 0x001133,       // Dark, mysterious blue
+                color: 0x001133,
                 transparent: true,
-                opacity: 1,         // Almost opaque
-                transmission: 0.2,     // Very little light passes through
-                roughness: 0.2,        // Slightly soft surface
+                opacity: 1,
+                transmission: 0.2,
+                roughness: 0.2,
                 metalness: 0.0,
                 clearcoat: 0.2,
                 clearcoatRoughness: 0.3,
-                ior: 1.3,              // Slight refraction
-                thickness: 1.0,        // Full depth for murkiness
+                ior: 1.3,
+                thickness: 1.0,
                 specularIntensity: 0.6,
-                envMapIntensity: 0.5,  // Subtle reflections
+                envMapIntensity: 0.5,
                 side: THREE.DoubleSide,
                 premultipliedAlpha: true,
             });
         }
 
-
-
-        // === Animations ===
+        // Animations
         if (gltf.animations && gltf.animations.length) {
             mixer = new THREE.AnimationMixer(ballParent);
             gltf.animations.forEach((clip) => {
                 const action = mixer.clipAction(clip);
                 actions.push(action);
             });
-            console.log('🎬 Found', gltf.animations.length, 'animation clips');
         }
 
         const loading = document.getElementById('loading');
@@ -241,15 +181,12 @@ loader.load(
     },
     (progress) => {
         if (progress.total)
-            console.log(
-                'Loading progress:',
-                ((progress.loaded / progress.total) * 100).toFixed(2) + '%'
-            );
+            console.log('Loading progress:', ((progress.loaded / progress.total) * 100).toFixed(2) + '%');
     },
     (err) => console.error('Error loading model:', err)
 );
 
-// === Animation Helpers ===
+// === Helpers ===
 function shakeObject(object, intensity = 0.01, duration = 0.2) {
     if (!object) return;
     const originalPosition = object.position.clone();
@@ -257,14 +194,13 @@ function shakeObject(object, intensity = 0.01, duration = 0.2) {
         object.position.x = originalPosition.x + (Math.random() - 0.5) * intensity;
         object.position.y = originalPosition.y + (Math.random() - 0.5) * intensity;
     }, 16);
-
     setTimeout(() => {
         clearInterval(shakeInterval);
         object.position.copy(originalPosition);
     }, duration * 1000);
 }
 
-// === Spin Function ===
+// === Spin ===
 let isAnimating = false;
 function triggerSpin() {
     if (!die || isAnimating) return;
@@ -275,75 +211,59 @@ function triggerSpin() {
     const tl = gsap.timeline({
         onComplete() {
             if (actions.length) {
-                actions.forEach((a) => a.stop());
                 const action = actions[Math.floor(Math.random() * actions.length)];
                 action.reset();
-                action.setLoop(THREE.LoopOnce, 1); // Play through once
+                action.setLoop(THREE.LoopOnce, 1);
                 action.clampWhenFinished = true;
-                action.timeScale = 0.7; // Slightly faster playback
-                action.setEffectiveTimeScale(1.5); // Speed up the animation
-                action.setEffectiveWeight(1.0); // Full influence
+                action.timeScale = 1;
                 action.play();
-                
-                // Add some variation to the animation
-                const randomSpeed = 0.8 + Math.random() * 0.4; // Random speed between 0.8 and 1.2
-                action.setDuration(action.getClip().duration * randomSpeed);
             }
             isAnimating = false;
         }
     });
 
-    // Initial slow ramp-up
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 4,  // Start with a smaller rotation
+        x: die.rotation.x + Math.PI * 4,
         duration: 0.15,
         ease: 'sine.in',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     });
-    
-    // Rapid acceleration phase
     tl.to(die.rotation, {
-        x: die.rotation.x + Math.PI * 16,  // Fast spin
+        x: die.rotation.x + Math.PI * 16,
         duration: 0.3,
         ease: 'power2.inOut',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.1');
-    
-    // Gradual slow down
     tl.to(die.rotation, {
         x: die.rotation.x + Math.PI * 10,
         duration: 0.4,
         ease: 'sine.out',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.1');
-    
-    // Final settle with bounce
     tl.to(die.rotation, {
         x: die.rotation.x + Math.PI * 4,
         duration: 0.6,
-        ease: 'elastic.out(1, 0.7)',  // More pronounced bounce
+        ease: 'elastic.out(1, 0.7)',
         onUpdate: () => die.quaternion.setFromEuler(die.rotation)
     }, '-=0.1');
 }
 
 // === Event Listeners ===
-// Desktop - only trigger on double-click
-renderer.domElement.addEventListener('dblclick', (e) => {
-    if (e.pointerType !== 'touch') {
-        triggerSpin();
-    }
-});
+// Desktop
+renderer.domElement.addEventListener('dblclick', () => triggerSpin());
 
-// Mobile touch controls
+// Mobile
 let touchStartTime = 0;
 let lastInteractionTime = 0;
 const interactionCooldown = 1000;
 const tapTimeThreshold = 300;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+const moveThreshold = 10;
 
 function triggerHapticFeedback() {
-    if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-    }
+    if ('vibrate' in navigator) navigator.vibrate(50);
 }
 
 function triggerVisualFeedback() {
@@ -357,11 +277,6 @@ function triggerVisualFeedback() {
     });
 }
 
-let touchStartX = 0;
-let touchStartY = 0;
-let touchMoved = false;
-const moveThreshold = 10;
-
 renderer.domElement.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
         touchStartTime = Date.now();
@@ -373,12 +288,9 @@ renderer.domElement.addEventListener('touchstart', (e) => {
 
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const dx = Math.abs(touch.clientX - touchStartX);
-        const dy = Math.abs(touch.clientY - touchStartY);
-        if (dx > moveThreshold || dy > moveThreshold) {
-            touchMoved = true;
-        }
+        const dx = Math.abs(e.touches[0].clientX - touchStartX);
+        const dy = Math.abs(e.touches[0].clientY - touchStartY);
+        if (dx > moveThreshold || dy > moveThreshold) touchMoved = true;
     }
 }, { passive: true });
 
@@ -400,7 +312,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === Animate loop ===
+// === Animate ===
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
