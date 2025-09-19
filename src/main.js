@@ -176,7 +176,7 @@ function triggerSpin() {
     });
 }
 
-// Configure orbit controls
+// Configure orbit controls for up-down rotation only
 controls.enablePan = false;  // Disable panning
 controls.enableZoom = true;  // Enable zooming (for pinch-to-zoom)
 controls.enableRotate = true; // Enable rotation
@@ -184,37 +184,40 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 controls.rotateSpeed = 0.5;
 
-// Set up rotation constraints
-controls.minPolarAngle = Math.PI / 2; // 90 degrees - look horizontally
-controls.maxPolarAngle = Math.PI / 2; // 90 degrees - look horizontally
-controls.minAzimuthAngle = -Infinity; // No limit on left rotation
-controls.maxAzimuthAngle = Infinity;  // No limit on right rotation
+// Set up rotation constraints for up-down rotation only (around X-axis)
+controls.minPolarAngle = 0; // Allow looking all the way up
+controls.maxPolarAngle = Math.PI; // Allow looking all the way down
+controls.minAzimuthAngle = 0; // Prevent horizontal rotation
+controls.maxAzimuthAngle = 0; // Prevent horizontal rotation
 
 // Set up touch controls
 controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate
-    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom and pan
+    ONE: THREE.TOUCH.ROTATE,  // Single finger can rotate up/down
+    TWO: THREE.TOUCH.DOLLY_PAN  // Two fingers for zoom
 };
 
-// Lock to X-axis rotation only
+// Lock to Y-axis rotation only (up-down)
 const originalUpdate = controls.update;
 controls.update = function() {
     originalUpdate.call(this);
     
-    // Get current rotation
-    const euler = new THREE.Euler().setFromQuaternion(ballParent.quaternion, 'XYZ');
+    if (!ballParent) return;
     
-    // Keep only X rotation, reset Y and Z
-    euler.x = 0;
-    euler.z = 0;
+    // Get the camera's up vector
+    const up = new THREE.Vector3(0, 1, 0);
     
-    // Apply the rotation to the ball
-    ballParent.rotation.x = 0;
-    ballParent.rotation.y = euler.y;
-    ballParent.rotation.z = 0;
-    
-    // Reset camera position to keep it looking at the ball
+    // Make camera look at the ball, but only allow up/down movement
     camera.lookAt(ballParent.position);
+    
+    // Lock camera's up vector to prevent tilting
+    camera.up.copy(up);
+    
+    // Force camera to maintain distance from ball
+    const distance = 5; // Adjust this value as needed
+    camera.position.sub(controls.target);
+    camera.position.setLength(distance);
+    camera.position.add(ballParent.position);
+    controls.target.copy(ballParent.position);
 };
 
 // === Desktop double-click ===
